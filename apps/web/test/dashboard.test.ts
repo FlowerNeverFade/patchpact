@@ -70,20 +70,29 @@ afterEach(() => {
 
 describe("dashboard console", () => {
   it("renders setup guidance and setup json", async () => {
-    const { app } = createHarness();
+    const { app, store } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
 
     const pageResponse = await request(app).get("/setup");
     const apiResponse = await request(app).get("/api/setup");
     const manifestResponse = await request(app).get("/api/setup/github-app-manifest");
+    const overviewResponse = await request(app).get("/api/overview");
     const readyResponse = await request(app).get("/readyz");
 
     expect(pageResponse.status).toBe(200);
     expect(pageResponse.text).toContain("PatchPact Instance Readiness");
     expect(pageResponse.text).toContain("GitHub App Manifest");
+    expect(pageResponse.text).toContain("Onboarding Summary");
     expect(apiResponse.status).toBe(200);
     expect(apiResponse.body.webhookUrl).toBe("http://localhost:3000/webhooks/github");
     expect(apiResponse.body.requiredEvents).toContain("pull_request");
     expect(apiResponse.body.registrationUrl).toBe("https://github.com/settings/apps/new");
+    expect(apiResponse.body.onboarding.repositoryCount).toBe(1);
     expect(manifestResponse.status).toBe(200);
     expect(manifestResponse.body.name).toBe("PatchPact Test");
     expect(pageResponse.text).toContain("PatchPact Test");
@@ -91,6 +100,9 @@ describe("dashboard console", () => {
     expect(manifestResponse.body.hook_attributes.url).toBe(
       "http://localhost:3000/webhooks/github",
     );
+    expect(overviewResponse.status).toBe(200);
+    expect(overviewResponse.body.repositoryCount).toBe(1);
+    expect(overviewResponse.body.installedRepositoryCount).toBe(1);
     expect(readyResponse.status).toBe(503);
     expect(readyResponse.body.ready).toBe(false);
   });

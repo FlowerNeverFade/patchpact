@@ -30,6 +30,7 @@ import {
   renderRepositoryConsole,
   renderSetupConsole,
 } from "./dashboard.js";
+import { buildInstanceOverview } from "./overview.js";
 
 export interface CreateWebAppOptions {
   env: PatchPactEnv;
@@ -62,8 +63,9 @@ function mergeConfig(
   });
 }
 
-function buildSetupData(env: PatchPactEnv) {
+async function buildSetupData(env: PatchPactEnv, store: ArtifactStore) {
   const manifest = buildGitHubAppManifest(env);
+  const overview = await buildInstanceOverview(store);
   return buildSetupConsoleData({
     baseUrl: env.PATCHPACT_BASE_URL,
     registrationUrl: buildGitHubAppRegistrationUrl(env),
@@ -73,6 +75,25 @@ function buildSetupData(env: PatchPactEnv) {
     manifest: {
       name: manifest.name,
       json: JSON.stringify(manifest, null, 2),
+    },
+    onboarding: {
+      repositoryCount: overview.repositoryCount,
+      installedRepositoryCount: overview.installedRepositoryCount,
+      activeRepositoryCount: overview.activeRepositoryCount,
+      repositoriesNeedingInstallation: overview.repositoriesNeedingInstallation.map((repo) => ({
+        owner: repo.owner,
+        repo: repo.repo,
+      })),
+      repositoriesNeedingKnowledgeSync: overview.repositoriesNeedingKnowledgeSync.map((repo) => ({
+        owner: repo.owner,
+        repo: repo.repo,
+        knowledgeChunkCount: repo.knowledgeChunkCount,
+      })),
+      recentFailedJobs: overview.recentFailedJobs.map((job) => ({
+        dedupeKey: job.dedupeKey,
+        type: job.type,
+        error: job.error,
+      })),
     },
     envStatus: {
       githubAppId: Boolean(env.PATCHPACT_GITHUB_APP_ID),
@@ -110,7 +131,9 @@ export function createWebApp(options: CreateWebAppOptions) {
   });
 
   app.get("/setup", async (_request, response) => {
-    response.type("html").send(renderSetupConsole(buildSetupData(options.env)));
+    response
+      .type("html")
+      .send(renderSetupConsole(await buildSetupData(options.env, options.store)));
   });
 
   app.get("/setup/github-app/callback", async (request, response) => {
@@ -145,7 +168,11 @@ export function createWebApp(options: CreateWebAppOptions) {
   });
 
   app.get("/api/setup", async (_request, response) => {
-    response.json(buildSetupData(options.env));
+    response.json(await buildSetupData(options.env, options.store));
+  });
+
+  app.get("/api/overview", async (_request, response) => {
+    response.json(await buildInstanceOverview(options.store));
   });
 
   app.get("/api/setup/github-app-manifest", async (_request, response) => {

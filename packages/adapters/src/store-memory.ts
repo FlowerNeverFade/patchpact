@@ -214,6 +214,12 @@ export class MemoryArtifactStore implements ArtifactStore {
     return this.jobs.get(dedupeKey) ?? null;
   }
 
+  async countKnowledgeChunks(owner: string, repo: string): Promise<number> {
+    return [...this.knowledgeChunks.values()].filter(
+      (chunk) => chunk.owner === owner && chunk.repo === repo,
+    ).length;
+  }
+
   async saveWaiver(input: {
     owner: string;
     repo: string;

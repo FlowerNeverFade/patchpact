@@ -341,6 +341,14 @@ export class PostgresArtifactStore implements ArtifactStore {
     return rows[0] ? rowToJobRun(rows[0]) : null;
   }
 
+  async countKnowledgeChunks(owner: string, repo: string): Promise<number> {
+    const { rows } = await this.pool.query(
+      `select count(*)::int as count from doc_chunks where owner = $1 and repo = $2`,
+      [owner, repo],
+    );
+    return rows[0]?.count ?? 0;
+  }
+
   async saveWaiver(input: {
     owner: string;
     repo: string;

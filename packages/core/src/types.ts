@@ -348,6 +348,7 @@ export interface ArtifactStore {
   ): Promise<void>;
   listJobRuns(limit?: number): Promise<JobRunRecord[]>;
   getJobRun(dedupeKey: string): Promise<JobRunRecord | null>;
+  countKnowledgeChunks(owner: string, repo: string): Promise<number>;
   saveWaiver(input: {
     owner: string;
     repo: string;

@@ -35,6 +35,25 @@ export interface SetupConsoleData {
     name: string;
     json: string;
   };
+  onboarding: {
+    repositoryCount: number;
+    installedRepositoryCount: number;
+    activeRepositoryCount: number;
+    repositoriesNeedingInstallation: Array<{
+      owner: string;
+      repo: string;
+    }>;
+    repositoriesNeedingKnowledgeSync: Array<{
+      owner: string;
+      repo: string;
+      knowledgeChunkCount: number;
+    }>;
+    recentFailedJobs: Array<{
+      dedupeKey: string;
+      type: string;
+      error?: string;
+    }>;
+  };
   checks: Array<{
     label: string;
     ready: boolean;
@@ -744,6 +763,25 @@ export function buildSetupConsoleData(input: {
     name: string;
     json: string;
   };
+  onboarding: {
+    repositoryCount: number;
+    installedRepositoryCount: number;
+    activeRepositoryCount: number;
+    repositoriesNeedingInstallation: Array<{
+      owner: string;
+      repo: string;
+    }>;
+    repositoriesNeedingKnowledgeSync: Array<{
+      owner: string;
+      repo: string;
+      knowledgeChunkCount: number;
+    }>;
+    recentFailedJobs: Array<{
+      dedupeKey: string;
+      type: string;
+      error?: string;
+    }>;
+  };
   envStatus: {
     githubAppId: boolean;
     githubPrivateKey: boolean;
@@ -764,6 +802,7 @@ export function buildSetupConsoleData(input: {
     storage: input.storage,
     provider: input.provider,
     manifest: input.manifest,
+    onboarding: input.onboarding,
     checks: [
       {
         label: "GitHub App ID",
@@ -875,6 +914,66 @@ export function renderSetupConsole(data: SetupConsoleData): string {
           <p>Manifest Registration URL</p>
           <pre>${escapeHtml(data.registrationUrl)}</pre>
           <p class="small">Storage <code>${escapeHtml(data.storage)}</code> | Inline jobs <code>${String(data.inlineJobs)}</code> | Default provider <code>${escapeHtml(data.provider)}</code></p>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Onboarding Summary</h2>
+          <ul class="card-list">
+            <li><strong>Known repositories</strong><br /><span class="small">${data.onboarding.repositoryCount}</span></li>
+            <li><strong>Installed repositories</strong><br /><span class="small">${data.onboarding.installedRepositoryCount}</span></li>
+            <li><strong>Active repositories</strong><br /><span class="small">${data.onboarding.activeRepositoryCount}</span></li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Needs Installation</h2>
+          <ul class="card-list">
+            ${
+              data.onboarding.repositoriesNeedingInstallation.length
+                ? data.onboarding.repositoriesNeedingInstallation
+                    .map(
+                      (repo) =>
+                        `<li><strong>${escapeHtml(repo.owner)}/${escapeHtml(repo.repo)}</strong></li>`,
+                    )
+                    .join("")
+                : "<li>No repositories are currently waiting for GitHub App installation.</li>"
+            }
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Needs Knowledge Sync</h2>
+          <ul class="card-list">
+            ${
+              data.onboarding.repositoriesNeedingKnowledgeSync.length
+                ? data.onboarding.repositoriesNeedingKnowledgeSync
+                    .map(
+                      (repo) =>
+                        `<li><strong>${escapeHtml(repo.owner)}/${escapeHtml(repo.repo)}</strong><br /><span class="small">Knowledge chunks ${repo.knowledgeChunkCount}</span></li>`,
+                    )
+                    .join("")
+                : "<li>No repositories are waiting for their first knowledge sync.</li>"
+            }
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Recent Failed Jobs</h2>
+          <ul class="card-list">
+            ${
+              data.onboarding.recentFailedJobs.length
+                ? data.onboarding.recentFailedJobs
+                    .slice(0, 5)
+                    .map(
+                      (job) =>
+                        `<li><strong>${escapeHtml(job.type)}</strong><br /><span class="small mono">${escapeHtml(job.dedupeKey)}</span>${job.error ? `<br /><span class="small">${escapeHtml(job.error)}</span>` : ""}</li>`,
+                    )
+                    .join("")
+                : "<li>No recent failed jobs.</li>"
+            }
+          </ul>
         </article>
       </section>
 
