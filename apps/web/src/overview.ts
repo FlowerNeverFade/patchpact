@@ -39,6 +39,8 @@ export interface RepositoryOnboardingChecklist {
 export interface RepositoryJobsFilters {
   status?: JobRunRecord["status"] | "all";
   type?: string;
+  view?: "open" | "all";
+  sort?: "attention" | "recent";
   page?: number;
   pageSize?: number;
 }
@@ -52,6 +54,8 @@ export interface RepositoryJobsPage {
   filters: {
     status: JobRunRecord["status"] | "all";
     type: string;
+    view: "open" | "all";
+    sort: "attention" | "recent";
   };
 }
 
@@ -86,19 +90,41 @@ export async function buildRepositoryJobsPage(
 ): Promise<RepositoryJobsPage> {
   const status = filters.status ?? "all";
   const type = filters.type?.trim().toLowerCase() ?? "";
+  const view = filters.view ?? "open";
+  const sort = filters.sort ?? "attention";
   const pageSize = Math.max(1, Math.min(filters.pageSize ?? 10, 50));
   const page = Math.max(1, filters.page ?? 1);
 
   const baseJobs = await getRepositoryJobsBase(store, owner, repo, 200);
-  const filteredJobs = baseJobs.filter((job) => {
-    if (status !== "all" && job.status !== status) {
-      return false;
-    }
-    if (type && !job.type.toLowerCase().includes(type)) {
-      return false;
-    }
-    return true;
-  });
+  const filteredJobs = baseJobs
+    .filter((job) => {
+      if (view === "open" && job.status === "completed") {
+        return false;
+      }
+      if (status !== "all" && job.status !== status) {
+        return false;
+      }
+      if (type && !job.type.toLowerCase().includes(type)) {
+        return false;
+      }
+      return true;
+    })
+    .sort((left, right) => {
+      if (sort === "recent") {
+        return right.updatedAt.localeCompare(left.updatedAt);
+      }
+
+      const priority = {
+        failed: 0,
+        processing: 1,
+        queued: 2,
+        completed: 3,
+      } as const;
+      return (
+        priority[left.status] - priority[right.status] ||
+        right.updatedAt.localeCompare(left.updatedAt)
+      );
+    });
 
   const total = filteredJobs.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -115,6 +141,8 @@ export async function buildRepositoryJobsPage(
     filters: {
       status,
       type,
+      view,
+      sort,
     },
   };
 }

@@ -37,6 +37,8 @@ interface RepositoryConsoleData {
     totalPages: number;
     status: string;
     type: string;
+    view: string;
+    sort: string;
   };
   onboarding?: {
     status: string;
@@ -794,6 +796,26 @@ export function renderRepositoryConsole(data: RepositoryConsoleData): string {
               <label>Job type filter
                 <input name="jobType" value="${escapeHtml(jobsPagination?.type ?? "")}" placeholder="create-contract" />
               </label>
+              <label>View
+                <select name="jobView">
+                  ${["open", "all"]
+                    .map(
+                      (view) =>
+                        `<option value="${view}"${jobsPagination?.view === view ? " selected" : ""}>${view}</option>`,
+                    )
+                    .join("")}
+                </select>
+              </label>
+              <label>Sort
+                <select name="jobSort">
+                  ${["attention", "recent"]
+                    .map(
+                      (sort) =>
+                        `<option value="${sort}"${jobsPagination?.sort === sort ? " selected" : ""}>${sort}</option>`,
+                    )
+                    .join("")}
+                </select>
+              </label>
             </div>
             <input type="hidden" name="jobPage" value="1" />
             <div class="actions">
@@ -824,12 +846,12 @@ export function renderRepositoryConsole(data: RepositoryConsoleData): string {
                   <span class="badge">Page ${jobsPagination.page} / ${jobsPagination.totalPages}</span>
                   ${
                     jobsPagination.page > 1
-                      ? `<a class="badge" href="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}?q=${encodeURIComponent(knowledgeQuery)}&jobStatus=${encodeURIComponent(jobsPagination.status)}&jobType=${encodeURIComponent(jobsPagination.type)}&jobPage=${previousJobsPage}">Previous</a>`
+                      ? `<a class="badge" href="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}?q=${encodeURIComponent(knowledgeQuery)}&jobStatus=${encodeURIComponent(jobsPagination.status)}&jobType=${encodeURIComponent(jobsPagination.type)}&jobView=${encodeURIComponent(jobsPagination.view)}&jobSort=${encodeURIComponent(jobsPagination.sort)}&jobPage=${previousJobsPage}">Previous</a>`
                       : ""
                   }
                   ${
                     jobsPagination.page < jobsPagination.totalPages
-                      ? `<a class="badge" href="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}?q=${encodeURIComponent(knowledgeQuery)}&jobStatus=${encodeURIComponent(jobsPagination.status)}&jobType=${encodeURIComponent(jobsPagination.type)}&jobPage=${nextJobsPage}">Next</a>`
+                      ? `<a class="badge" href="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}?q=${encodeURIComponent(knowledgeQuery)}&jobStatus=${encodeURIComponent(jobsPagination.status)}&jobType=${encodeURIComponent(jobsPagination.type)}&jobView=${encodeURIComponent(jobsPagination.view)}&jobSort=${encodeURIComponent(jobsPagination.sort)}&jobPage=${nextJobsPage}">Next</a>`
                       : ""
                   }
                 </div>`

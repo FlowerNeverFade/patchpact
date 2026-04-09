@@ -444,6 +444,10 @@ export function createWebApp(options: CreateWebAppOptions) {
         ? jobStatusRaw
         : "all";
     const jobType = String(request.query.jobType ?? "").trim();
+    const jobViewRaw = String(request.query.jobView ?? "open").trim();
+    const jobView = jobViewRaw === "all" ? "all" : "open";
+    const jobSortRaw = String(request.query.jobSort ?? "attention").trim();
+    const jobSort = jobSortRaw === "recent" ? "recent" : "attention";
     const jobPage = Math.max(1, Number(request.query.jobPage ?? 1) || 1);
     const checklist = await buildRepositoryOnboardingChecklist(
       options.store,
@@ -453,6 +457,8 @@ export function createWebApp(options: CreateWebAppOptions) {
     const repositoryJobs = await buildRepositoryJobsPage(options.store, repo.owner, repo.repo, {
       status: jobStatus,
       type: jobType,
+      view: jobView,
+      sort: jobSort,
       page: jobPage,
       pageSize: 6,
     });
@@ -476,6 +482,8 @@ export function createWebApp(options: CreateWebAppOptions) {
           totalPages: repositoryJobs.totalPages,
           status: repositoryJobs.filters.status,
           type: repositoryJobs.filters.type,
+          view: repositoryJobs.filters.view,
+          sort: repositoryJobs.filters.sort,
         },
         knowledgeQuery,
         knowledgeResults: await options.store.searchKnowledgeChunks(
@@ -636,6 +644,10 @@ export function createWebApp(options: CreateWebAppOptions) {
         ? jobStatusRaw
         : "all";
     const type = String(request.query.type ?? "").trim();
+    const viewRaw = String(request.query.view ?? "open").trim();
+    const view = viewRaw === "all" ? "all" : "open";
+    const sortRaw = String(request.query.sort ?? "attention").trim();
+    const sort = sortRaw === "recent" ? "recent" : "attention";
     const page = Math.max(1, Number(request.query.page ?? 1) || 1);
     const pageSize = Math.max(1, Math.min(Number(request.query.limit ?? 20) || 20, 50));
     const jobPage = await buildRepositoryJobsPage(
@@ -645,6 +657,8 @@ export function createWebApp(options: CreateWebAppOptions) {
       {
         status,
         type,
+        view,
+        sort,
         page,
         pageSize,
       },
