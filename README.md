@@ -117,6 +117,12 @@ npm run dev:cli -- print-github-app-manifest
 http://localhost:3000/setup/github-app/callback
 ```
 
+12. Drill into a single repository onboarding checklist here:
+
+```text
+http://localhost:3000/setup/repositories/<owner>/<repo>
+```
+
 ## Container workflow
 
 Build the image:
@@ -266,8 +272,10 @@ npm run dev:cli -- print-github-app-manifest
 - `GET /dashboard/jobs/:dedupeKey`
 - `GET /setup`
 - `GET /setup/github-app/callback`
+- `GET /setup/repositories/:owner/:repo`
 - `GET /api/setup`
 - `GET /api/overview`
+- `GET /api/setup/repositories/:owner/:repo`
 - `GET /api/setup/github-app-manifest`
 - `GET /api/setup/github-app-manifest/exchange`
 - `GET /dashboard/:owner/:repo/contracts/:issueNumber`
@@ -307,6 +315,8 @@ The manifest flow can now also exchange GitHub's callback code and turn the resp
 The setup experience now also includes onboarding summaries for known repositories, installation coverage, first knowledge sync gaps, and recent failed jobs.
 
 It now also includes a repository-by-repository action plan so operators can see the next recommended step for each connected repo at a glance.
+
+There is now also a dedicated onboarding checklist page per repository, so setup can drill from instance-level summary down to concrete repository-specific next steps.
 
 ## Security boundaries
 

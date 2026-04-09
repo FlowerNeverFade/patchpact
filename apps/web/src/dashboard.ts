@@ -87,6 +87,32 @@ export interface GitHubAppCallbackConsoleData {
   envSnippet: string;
 }
 
+export interface RepositoryOnboardingChecklistPageData {
+  repository: {
+    owner: string;
+    repo: string;
+    status: string;
+    summary: string;
+    knowledgeChunkCount: number;
+    contractCount: number;
+    packetCount: number;
+    waiverCount: number;
+    installationId?: number;
+  };
+  checklistItems: Array<{
+    label: string;
+    state: "complete" | "attention" | "optional";
+    detail: string;
+    actionLabel?: string;
+    actionHref?: string;
+  }>;
+  recentFailedJobs: Array<{
+    dedupeKey: string;
+    type: string;
+    error?: string;
+  }>;
+}
+
 async function collectRepositorySnapshot(
   store: ArtifactStore,
   repo: RepositoryRecord,
@@ -610,6 +636,82 @@ export function renderRepositoryConsole(data: RepositoryConsoleData): string {
         <article class="card">
           <h2>Waivers</h2>
           <ul class="card-list">${renderWaiverList(waivers.slice(0, 12))}</ul>
+        </article>
+      </section>
+    `,
+  );
+}
+
+export function renderRepositoryOnboardingChecklistPage(
+  data: RepositoryOnboardingChecklistPageData,
+): string {
+  const repoHref = `/dashboard/${encodeURIComponent(data.repository.owner)}/${encodeURIComponent(data.repository.repo)}`;
+  return baseStyles(
+    `${data.repository.owner}/${data.repository.repo} onboarding checklist`,
+    `
+      <section class="hero">
+        <span class="eyebrow">Repository Onboarding</span>
+        <h1>${escapeHtml(data.repository.owner)}/${escapeHtml(data.repository.repo)}</h1>
+        <p>${escapeHtml(data.repository.summary)}</p>
+        <div class="actions">
+          <a class="badge" href="/setup">Back to Setup</a>
+          <a class="badge" href="${repoHref}">Open Repository Console</a>
+        </div>
+        <div class="statline">
+          <span class="badge">Status ${escapeHtml(data.repository.status)}</span>
+          <span class="badge">Knowledge ${data.repository.knowledgeChunkCount}</span>
+          <span class="badge">Contracts ${data.repository.contractCount}</span>
+          <span class="badge">Packets ${data.repository.packetCount}</span>
+          <span class="badge">Waivers ${data.repository.waiverCount}</span>
+        </div>
+      </section>
+
+      <section class="grid-wide">
+        <article class="card">
+          <h2>Checklist</h2>
+          <ul class="card-list">
+            ${data.checklistItems
+              .map(
+                (item) => `<li>
+                  <strong>${escapeHtml(item.label)}</strong>
+                  <span class="pill${item.state === "complete" ? "" : " pill-warn"}">${escapeHtml(item.state)}</span><br />
+                  <span class="small">${escapeHtml(item.detail)}</span>
+                  ${
+                    item.actionHref && item.actionLabel
+                      ? `<br /><a class="badge" href="${escapeHtml(item.actionHref)}">${escapeHtml(item.actionLabel)}</a>`
+                      : ""
+                  }
+                </li>`,
+              )
+              .join("")}
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Operational Context</h2>
+          <ul class="card-list">
+            <li><strong>Installation</strong><br /><span class="small">${data.repository.installationId ? `Recorded as ${data.repository.installationId}` : "Not recorded yet"}</span></li>
+            <li><strong>Repository console</strong><br /><a class="badge" href="${repoHref}">Open Console</a></li>
+            <li><strong>Setup guide</strong><br /><a class="badge" href="/setup">Open Setup</a></li>
+          </ul>
+
+          <h3 style="margin-top:18px;">Recent Failed Jobs</h3>
+          <ul class="card-list">
+            ${
+              data.recentFailedJobs.length
+                ? data.recentFailedJobs
+                    .slice(0, 5)
+                    .map(
+                      (job) => `<li>
+                        <strong>${escapeHtml(job.type)}</strong><br />
+                        <a class="badge" href="/dashboard/jobs/${encodeURIComponent(job.dedupeKey)}">Open Job</a>
+                        ${job.error ? `<br /><span class="small">${escapeHtml(job.error)}</span>` : ""}
+                      </li>`,
+                    )
+                    .join("")
+                : "<li>No failed jobs are currently linked to this repository.</li>"
+            }
+          </ul>
         </article>
       </section>
     `,

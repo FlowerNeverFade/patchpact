@@ -14,6 +14,20 @@ export interface RepositoryOnboardingStatus {
   recommendedActionHref: string;
 }
 
+export interface RepositoryOnboardingChecklistItem {
+  label: string;
+  state: "complete" | "attention" | "optional";
+  detail: string;
+  actionLabel?: string;
+  actionHref?: string;
+}
+
+export interface RepositoryOnboardingChecklist {
+  repository: RepositoryOnboardingStatus;
+  checklistItems: RepositoryOnboardingChecklistItem[];
+  recentFailedJobs: JobRunRecord[];
+}
+
 export interface InstanceOverview {
   repositoryCount: number;
   installedRepositoryCount: number;
@@ -44,28 +58,29 @@ export async function buildRepositoryOnboardingStatus(
         : "configured";
 
   const repositoryConsoleHref = `/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`;
+  const setupChecklistHref = `/setup/repositories/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`;
   const recommendedAction =
     status === "needs-installation"
       ? {
-          label: "Open setup guide",
-          href: "/setup",
+          label: "Open onboarding checklist",
+          href: setupChecklistHref,
           summary: "PatchPact knows about this repository but has not recorded a GitHub App installation yet.",
         }
       : status === "needs-knowledge-sync"
         ? {
-            label: "Sync knowledge",
-            href: `${repositoryConsoleHref}?q=`,
+            label: "Open onboarding checklist",
+            href: setupChecklistHref,
             summary: "The repository is installed but PatchPact has not built its first document knowledge index yet.",
           }
         : status === "active"
           ? {
-              label: "Open repository console",
-              href: repositoryConsoleHref,
+              label: "Open onboarding checklist",
+              href: setupChecklistHref,
               summary: `PatchPact has generated ${contracts.length} contracts and ${packets.length} decision packets for this repository.`,
             }
           : {
-              label: "Review repository console",
-              href: repositoryConsoleHref,
+              label: "Open onboarding checklist",
+              href: setupChecklistHref,
               summary: "The repository is installed and indexed, but PatchPact has not generated maintainer artifacts yet.",
             };
 
@@ -116,6 +131,96 @@ export async function buildInstanceOverview(
       (repo) => repo.status === "needs-knowledge-sync",
     ),
     repositories: orderedStatuses,
+    recentFailedJobs,
+  };
+}
+
+export async function buildRepositoryOnboardingChecklist(
+  store: ArtifactStore,
+  owner: string,
+  repo: string,
+): Promise<RepositoryOnboardingChecklist | null> {
+  const repository = await store.getRepository(owner, repo);
+  if (!repository) {
+    return null;
+  }
+
+  const status = await buildRepositoryOnboardingStatus(store, repository);
+  const repositoryConsoleHref = `/dashboard/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const recentFailedJobs = (await store.listJobRuns(50)).filter((job) => {
+    const payload = job.payload as Partial<{ owner: string; repo: string }>;
+    return job.status === "failed" && payload.owner === owner && payload.repo === repo;
+  });
+
+  const checklistItems: RepositoryOnboardingChecklistItem[] = [
+    {
+      label: "GitHub App installation",
+      state: status.installationId ? "complete" : "attention",
+      detail: status.installationId
+        ? `Installation recorded with id ${status.installationId}.`
+        : "PatchPact has not recorded a GitHub App installation for this repository yet.",
+      actionLabel: status.installationId ? "Open repository console" : "Open setup guide",
+      actionHref: status.installationId ? repositoryConsoleHref : "/setup",
+    },
+    {
+      label: "Initial knowledge sync",
+      state: status.knowledgeChunkCount > 0 ? "complete" : "attention",
+      detail:
+        status.knowledgeChunkCount > 0
+          ? `PatchPact indexed ${status.knowledgeChunkCount} knowledge chunks for this repository.`
+          : "Run an initial knowledge sync so PatchPact can ground contracts and decision packets in repository docs.",
+      actionLabel: "Open repository console",
+      actionHref: repositoryConsoleHref,
+    },
+    {
+      label: "Repository policy review",
+      state:
+        repository.config.repoRules.length > 0 || repository.config.mode === "soft-gate"
+          ? "complete"
+          : "optional",
+      detail:
+        repository.config.repoRules.length > 0
+          ? `Repository policy contains ${repository.config.repoRules.length} custom rule(s).`
+          : "No custom repository rules are configured yet. PatchPact will rely on defaults until you add them.",
+      actionLabel: "Review repository policy",
+      actionHref: repositoryConsoleHref,
+    },
+    {
+      label: "Contract generation",
+      state: status.contractCount > 0 ? "complete" : "optional",
+      detail:
+        status.contractCount > 0
+          ? `PatchPact has already generated ${status.contractCount} contract artifact(s).`
+          : "No contracts have been generated for this repository yet.",
+      actionLabel: "Open repository console",
+      actionHref: repositoryConsoleHref,
+    },
+    {
+      label: "Decision packet generation",
+      state: status.packetCount > 0 ? "complete" : "optional",
+      detail:
+        status.packetCount > 0
+          ? `PatchPact has generated ${status.packetCount} decision packet artifact(s).`
+          : "No decision packets have been generated yet.",
+      actionLabel: "Open repository console",
+      actionHref: repositoryConsoleHref,
+    },
+    {
+      label: "Recent failed jobs",
+      state: recentFailedJobs.length ? "attention" : "complete",
+      detail: recentFailedJobs.length
+        ? `PatchPact recorded ${recentFailedJobs.length} failed job(s) for this repository recently.`
+        : "No failed jobs are currently associated with this repository.",
+      actionLabel: recentFailedJobs.length ? "Review failed jobs" : "Open repository console",
+      actionHref: recentFailedJobs.length
+        ? `/dashboard/jobs/${encodeURIComponent(recentFailedJobs[0]!.dedupeKey)}`
+        : repositoryConsoleHref,
+    },
+  ];
+
+  return {
+    repository: status,
+    checklistItems,
     recentFailedJobs,
   };
 }

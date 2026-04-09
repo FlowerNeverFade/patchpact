@@ -106,8 +106,32 @@ describe("dashboard console", () => {
     expect(overviewResponse.body.installedRepositoryCount).toBe(1);
     expect(overviewResponse.body.repositories[0].recommendedActionLabel).toBeDefined();
     expect(overviewResponse.body.repositories[0].summary).toContain("installed");
+    expect(overviewResponse.body.repositories[0].recommendedActionHref).toBe(
+      "/setup/repositories/acme/patchpact-demo",
+    );
     expect(readyResponse.status).toBe(503);
     expect(readyResponse.body.ready).toBe(false);
+  });
+
+  it("renders repository onboarding checklist in html and json", async () => {
+    const { app, store } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
+
+    const pageResponse = await request(app).get("/setup/repositories/acme/patchpact-demo");
+    const apiResponse = await request(app).get("/api/setup/repositories/acme/patchpact-demo");
+
+    expect(pageResponse.status).toBe(200);
+    expect(pageResponse.text).toContain("Repository Onboarding");
+    expect(pageResponse.text).toContain("Checklist");
+    expect(apiResponse.status).toBe(200);
+    expect(apiResponse.body.repository.owner).toBe("acme");
+    expect(apiResponse.body.repository.repo).toBe("patchpact-demo");
+    expect(apiResponse.body.checklistItems.length).toBeGreaterThan(0);
   });
 
   it("renders GitHub App manifest callback results in html and json", async () => {

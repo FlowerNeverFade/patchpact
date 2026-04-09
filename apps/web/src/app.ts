@@ -27,10 +27,14 @@ import {
   renderDecisionPacketDetailPage,
   renderGitHubAppCallbackConsole,
   renderJobDetailPage,
+  renderRepositoryOnboardingChecklistPage,
   renderRepositoryConsole,
   renderSetupConsole,
 } from "./dashboard.js";
-import { buildInstanceOverview } from "./overview.js";
+import {
+  buildInstanceOverview,
+  buildRepositoryOnboardingChecklist,
+} from "./overview.js";
 
 export interface CreateWebAppOptions {
   env: PatchPactEnv;
@@ -148,6 +152,29 @@ export function createWebApp(options: CreateWebAppOptions) {
       .send(renderSetupConsole(await buildSetupData(options.env, options.store)));
   });
 
+  app.get("/setup/repositories/:owner/:repo", async (request, response) => {
+    const checklist = await buildRepositoryOnboardingChecklist(
+      options.store,
+      request.params.owner,
+      request.params.repo,
+    );
+    if (!checklist) {
+      response.status(404).type("html").send("Repository not found");
+      return;
+    }
+    response.type("html").send(
+      renderRepositoryOnboardingChecklistPage({
+        repository: checklist.repository,
+        checklistItems: checklist.checklistItems,
+        recentFailedJobs: checklist.recentFailedJobs.map((job) => ({
+          dedupeKey: job.dedupeKey,
+          type: job.type,
+          error: job.error,
+        })),
+      }),
+    );
+  });
+
   app.get("/setup/github-app/callback", async (request, response) => {
     const code = String(request.query.code ?? "").trim();
     if (!code) {
@@ -185,6 +212,19 @@ export function createWebApp(options: CreateWebAppOptions) {
 
   app.get("/api/overview", async (_request, response) => {
     response.json(await buildInstanceOverview(options.store));
+  });
+
+  app.get("/api/setup/repositories/:owner/:repo", async (request, response) => {
+    const checklist = await buildRepositoryOnboardingChecklist(
+      options.store,
+      request.params.owner,
+      request.params.repo,
+    );
+    if (!checklist) {
+      response.status(404).json({ error: "Repository not found" });
+      return;
+    }
+    response.json(checklist);
   });
 
   app.get("/api/setup/github-app-manifest", async (_request, response) => {
