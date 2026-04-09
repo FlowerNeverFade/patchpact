@@ -36,6 +36,21 @@ export interface RepositoryOnboardingChecklist {
   recentFailedJobs: JobRunRecord[];
 }
 
+export async function listRepositoryJobs(
+  store: ArtifactStore,
+  owner: string,
+  repo: string,
+  limit = 20,
+): Promise<JobRunRecord[]> {
+  const jobs = await store.listJobRuns(Math.max(limit, 50));
+  return jobs
+    .filter((job) => {
+      const payload = job.payload as Partial<{ owner: string; repo: string }>;
+      return payload.owner === owner && payload.repo === repo;
+    })
+    .slice(0, limit);
+}
+
 export interface InstanceOverview {
   repositoryCount: number;
   installedRepositoryCount: number;
@@ -187,10 +202,9 @@ export async function buildRepositoryOnboardingChecklist(
     store.listDecisionPackets(owner, repo),
   ]);
   const repositoryConsoleHref = `/dashboard/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
-  const recentFailedJobs = (await store.listJobRuns(50)).filter((job) => {
-    const payload = job.payload as Partial<{ owner: string; repo: string }>;
-    return job.status === "failed" && payload.owner === owner && payload.repo === repo;
-  });
+  const recentFailedJobs = (await listRepositoryJobs(store, owner, repo, 50)).filter(
+    (job) => job.status === "failed",
+  );
 
   const checklistItems: RepositoryOnboardingChecklistItem[] = [
     {

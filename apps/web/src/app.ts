@@ -35,6 +35,7 @@ import {
 import {
   buildInstanceOverview,
   buildRepositoryOnboardingChecklist,
+  listRepositoryJobs,
   type RepositoryOnboardingPhase,
 } from "./overview.js";
 
@@ -444,6 +445,15 @@ export function createWebApp(options: CreateWebAppOptions) {
         contracts: await options.store.listContracts(repo.owner, repo.repo),
         packets: await options.store.listDecisionPackets(repo.owner, repo.repo),
         waivers: await options.store.listWaivers(repo.owner, repo.repo),
+        recentJobs: (await listRepositoryJobs(options.store, repo.owner, repo.repo, 12)).map(
+          (job) => ({
+            dedupeKey: job.dedupeKey,
+            type: job.type,
+            status: job.status,
+            updatedAt: job.updatedAt,
+            error: job.error,
+          }),
+        ),
         knowledgeQuery,
         knowledgeResults: await options.store.searchKnowledgeChunks(
           repo.owner,
@@ -590,6 +600,17 @@ export function createWebApp(options: CreateWebAppOptions) {
       packets: await options.store.listDecisionPackets(repo.owner, repo.repo),
       waivers: await options.store.listWaivers(repo.owner, repo.repo),
       onboarding: checklist,
+    });
+  });
+
+  app.get("/api/repositories/:owner/:repo/jobs", async (request, response) => {
+    response.json({
+      jobs: await listRepositoryJobs(
+        options.store,
+        request.params.owner,
+        request.params.repo,
+        Number.isFinite(Number(request.query.limit)) ? Number(request.query.limit) : 20,
+      ),
     });
   });
 

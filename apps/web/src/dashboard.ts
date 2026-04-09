@@ -23,6 +23,13 @@ interface RepositoryConsoleData {
   knowledgeResults: RepositoryKnowledgeChunk[];
   knowledgeQuery: string;
   notice?: NoticeData;
+  recentJobs?: Array<{
+    dedupeKey: string;
+    type: string;
+    status: string;
+    updatedAt: string;
+    error?: string;
+  }>;
   onboarding?: {
     status: string;
     summary: string;
@@ -597,7 +604,7 @@ export async function renderDashboard(store: ArtifactStore): Promise<string> {
 }
 
 export function renderRepositoryConsole(data: RepositoryConsoleData): string {
-  const { repo, contracts, packets, waivers, knowledgeQuery, knowledgeResults, onboarding, notice } = data;
+  const { repo, contracts, packets, waivers, knowledgeQuery, knowledgeResults, onboarding, notice, recentJobs } = data;
   return baseStyles(
     `${repo.owner}/${repo.repo} - PatchPact`,
     `
@@ -742,6 +749,27 @@ export function renderRepositoryConsole(data: RepositoryConsoleData): string {
         <article class="card">
           <h2>Waivers</h2>
           <ul class="card-list">${renderWaiverList(waivers.slice(0, 12))}</ul>
+        </article>
+
+        <article class="card">
+          <h2>Recent Repository Jobs</h2>
+          <ul class="card-list">
+            ${
+              recentJobs?.length
+                ? recentJobs
+                    .map(
+                      (job) => `<li>
+                        <a href="/dashboard/jobs/${encodeURIComponent(job.dedupeKey)}"><strong>${escapeHtml(job.type)}</strong></a>
+                        <span class="pill${job.status === "completed" ? "" : " pill-warn"}">${escapeHtml(job.status)}</span><br />
+                        <span class="small mono">${escapeHtml(job.dedupeKey)}</span><br />
+                        <span class="small">${escapeHtml(job.updatedAt)}</span>
+                        ${job.error ? `<br /><span class="small">${escapeHtml(job.error)}</span>` : ""}
+                      </li>`,
+                    )
+                    .join("")
+                : "<li>No repository-specific jobs recorded yet.</li>"
+            }
+          </ul>
         </article>
       </section>
     `,

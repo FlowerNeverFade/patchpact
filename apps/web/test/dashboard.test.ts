@@ -217,6 +217,19 @@ describe("dashboard console", () => {
       installationId: 1001,
       config: defaultPatchPactConfig,
     });
+    await store.saveJobRun({
+      id: "repo-job-1",
+      dedupeKey: "repo-job-1",
+      type: "sync-repository-knowledge",
+      status: "completed",
+      payload: {
+        type: "sync-repository-knowledge",
+        owner: "acme",
+        repo: "patchpact-demo",
+        installationId: 1001,
+        requestedBy: "dashboard",
+      },
+    });
 
     const response = await request(app).get("/dashboard/acme/patchpact-demo");
 
@@ -226,6 +239,8 @@ describe("dashboard console", () => {
     expect(response.text).toContain("Sync Knowledge Now");
     expect(response.text).toContain("Onboarding Status");
     expect(response.text).toContain("Open Full Checklist");
+    expect(response.text).toContain("Recent Repository Jobs");
+    expect(response.text).toContain("repo-job-1");
   });
 
   it("renders notice banners from query params", async () => {
@@ -265,6 +280,50 @@ describe("dashboard console", () => {
     expect(onboardingResponse.status).toBe(200);
     expect(onboardingResponse.body.repository.repo).toBe("patchpact-demo");
     expect(onboardingResponse.body.checklistItems.length).toBeGreaterThan(0);
+  });
+
+  it("lists repository-specific jobs via the repository jobs api", async () => {
+    const { store, app } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
+    await store.saveJobRun({
+      id: "repo-job-2",
+      dedupeKey: "repo-job-2",
+      type: "create-contract",
+      status: "completed",
+      payload: {
+        type: "create-contract",
+        owner: "acme",
+        repo: "patchpact-demo",
+        installationId: 1001,
+        issueNumber: 42,
+        requestedBy: "maintainer",
+      },
+    });
+    await store.saveJobRun({
+      id: "other-job",
+      dedupeKey: "other-job",
+      type: "create-contract",
+      status: "completed",
+      payload: {
+        type: "create-contract",
+        owner: "other",
+        repo: "repo",
+        installationId: 1002,
+        issueNumber: 1,
+        requestedBy: "maintainer",
+      },
+    });
+
+    const response = await request(app).get("/api/repositories/acme/patchpact-demo/jobs");
+
+    expect(response.status).toBe(200);
+    expect(response.body.jobs.length).toBe(1);
+    expect(response.body.jobs[0].dedupeKey).toBe("repo-job-2");
   });
 
   it("renders contract and packet detail pages", async () => {
