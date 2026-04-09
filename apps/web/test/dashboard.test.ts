@@ -128,6 +128,7 @@ describe("dashboard console", () => {
     expect(pageResponse.status).toBe(200);
     expect(pageResponse.text).toContain("Repository Onboarding");
     expect(pageResponse.text).toContain("Checklist");
+    expect(pageResponse.text).toContain("Sync Knowledge Now");
     expect(apiResponse.status).toBe(200);
     expect(apiResponse.body.repository.owner).toBe("acme");
     expect(apiResponse.body.repository.repo).toBe("patchpact-demo");

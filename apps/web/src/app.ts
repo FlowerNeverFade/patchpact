@@ -165,6 +165,8 @@ export function createWebApp(options: CreateWebAppOptions) {
     response.type("html").send(
       renderRepositoryOnboardingChecklistPage({
         repository: checklist.repository,
+        latestContractIssueNumber: checklist.latestContractIssueNumber,
+        latestPullRequestNumber: checklist.latestPullRequestNumber,
         checklistItems: checklist.checklistItems,
         recentFailedJobs: checklist.recentFailedJobs.map((job) => ({
           dedupeKey: job.dedupeKey,

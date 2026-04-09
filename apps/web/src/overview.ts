@@ -24,6 +24,8 @@ export interface RepositoryOnboardingChecklistItem {
 
 export interface RepositoryOnboardingChecklist {
   repository: RepositoryOnboardingStatus;
+  latestContractIssueNumber?: number;
+  latestPullRequestNumber?: number;
   checklistItems: RepositoryOnboardingChecklistItem[];
   recentFailedJobs: JobRunRecord[];
 }
@@ -145,7 +147,11 @@ export async function buildRepositoryOnboardingChecklist(
     return null;
   }
 
-  const status = await buildRepositoryOnboardingStatus(store, repository);
+  const [status, contracts, packets] = await Promise.all([
+    buildRepositoryOnboardingStatus(store, repository),
+    store.listContracts(owner, repo),
+    store.listDecisionPackets(owner, repo),
+  ]);
   const repositoryConsoleHref = `/dashboard/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
   const recentFailedJobs = (await store.listJobRuns(50)).filter((job) => {
     const payload = job.payload as Partial<{ owner: string; repo: string }>;
@@ -220,6 +226,8 @@ export async function buildRepositoryOnboardingChecklist(
 
   return {
     repository: status,
+    latestContractIssueNumber: contracts[0]?.issueNumber,
+    latestPullRequestNumber: packets[0]?.pullRequestNumber,
     checklistItems,
     recentFailedJobs,
   };

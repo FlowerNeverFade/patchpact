@@ -99,6 +99,8 @@ export interface RepositoryOnboardingChecklistPageData {
     waiverCount: number;
     installationId?: number;
   };
+  latestContractIssueNumber?: number;
+  latestPullRequestNumber?: number;
   checklistItems: Array<{
     label: string;
     state: "complete" | "attention" | "optional";
@@ -646,6 +648,7 @@ export function renderRepositoryOnboardingChecklistPage(
   data: RepositoryOnboardingChecklistPageData,
 ): string {
   const repoHref = `/dashboard/${encodeURIComponent(data.repository.owner)}/${encodeURIComponent(data.repository.repo)}`;
+  const checklistHref = `/setup/repositories/${encodeURIComponent(data.repository.owner)}/${encodeURIComponent(data.repository.repo)}`;
   return baseStyles(
     `${data.repository.owner}/${data.repository.repo} onboarding checklist`,
     `
@@ -694,6 +697,32 @@ export function renderRepositoryOnboardingChecklistPage(
             <li><strong>Repository console</strong><br /><a class="badge" href="${repoHref}">Open Console</a></li>
             <li><strong>Setup guide</strong><br /><a class="badge" href="/setup">Open Setup</a></li>
           </ul>
+
+          <h3 style="margin-top:18px;">Quick Actions</h3>
+          <div class="actions">
+            <form method="post" action="${repoHref}/actions/sync-knowledge">
+              <input type="hidden" name="redirectTo" value="${checklistHref}" />
+              <button type="submit">Sync Knowledge Now</button>
+            </form>
+            ${
+              data.latestContractIssueNumber
+                ? `<form method="post" action="${repoHref}/actions/refresh-contract">
+                    <input type="hidden" name="issueNumber" value="${data.latestContractIssueNumber}" />
+                    <input type="hidden" name="redirectTo" value="${checklistHref}" />
+                    <button type="submit" class="secondary">Refresh Latest Contract</button>
+                  </form>`
+                : ""
+            }
+            ${
+              data.latestPullRequestNumber
+                ? `<form method="post" action="${repoHref}/actions/regenerate-packet">
+                    <input type="hidden" name="pullRequestNumber" value="${data.latestPullRequestNumber}" />
+                    <input type="hidden" name="redirectTo" value="${checklistHref}" />
+                    <button type="submit" class="secondary">Regenerate Latest Packet</button>
+                  </form>`
+                : ""
+            }
+          </div>
 
           <h3 style="margin-top:18px;">Recent Failed Jobs</h3>
           <ul class="card-list">
