@@ -1,10 +1,16 @@
 import type { ArtifactStore, JobRunRecord, RepositoryRecord } from "@patchpact/core";
 
+export type RepositoryOnboardingPhase =
+  | "needs-installation"
+  | "needs-knowledge-sync"
+  | "active"
+  | "configured";
+
 export interface RepositoryOnboardingStatus {
   owner: string;
   repo: string;
   installationId?: number;
-  status: "needs-installation" | "needs-knowledge-sync" | "active" | "configured";
+  status: RepositoryOnboardingPhase;
   knowledgeChunkCount: number;
   contractCount: number;
   packetCount: number;
@@ -34,10 +40,20 @@ export interface InstanceOverview {
   repositoryCount: number;
   installedRepositoryCount: number;
   activeRepositoryCount: number;
+  visibleRepositoryCount: number;
+  filters: {
+    query: string;
+    status: RepositoryOnboardingPhase | "all";
+  };
   repositoriesNeedingInstallation: RepositoryOnboardingStatus[];
   repositoriesNeedingKnowledgeSync: RepositoryOnboardingStatus[];
   repositories: RepositoryOnboardingStatus[];
   recentFailedJobs: JobRunRecord[];
+}
+
+export interface OverviewFilters {
+  query?: string;
+  status?: RepositoryOnboardingPhase | "all";
 }
 
 export async function buildRepositoryOnboardingStatus(
@@ -103,6 +119,7 @@ export async function buildRepositoryOnboardingStatus(
 
 export async function buildInstanceOverview(
   store: ArtifactStore,
+  filters: OverviewFilters = {},
 ): Promise<InstanceOverview> {
   const repositories = await store.listRepositories();
   const statuses = await Promise.all(
@@ -111,6 +128,8 @@ export async function buildInstanceOverview(
   const recentFailedJobs = (await store.listJobRuns(50)).filter(
     (job) => job.status === "failed",
   );
+  const normalizedQuery = filters.query?.trim().toLowerCase() ?? "";
+  const normalizedStatus = filters.status ?? "all";
 
   const orderedStatuses = [...statuses].sort((left, right) => {
     const order = {
@@ -121,18 +140,33 @@ export async function buildInstanceOverview(
     } as const;
     return order[left.status] - order[right.status] || `${left.owner}/${left.repo}`.localeCompare(`${right.owner}/${right.repo}`);
   });
+  const visibleStatuses = orderedStatuses.filter((repo) => {
+    if (normalizedStatus !== "all" && repo.status !== normalizedStatus) {
+      return false;
+    }
+    if (!normalizedQuery) {
+      return true;
+    }
+    const haystack = `${repo.owner}/${repo.repo} ${repo.summary}`.toLowerCase();
+    return haystack.includes(normalizedQuery);
+  });
 
   return {
     repositoryCount: statuses.length,
     installedRepositoryCount: statuses.filter((repo) => Boolean(repo.installationId)).length,
     activeRepositoryCount: statuses.filter((repo) => repo.status === "active").length,
+    visibleRepositoryCount: visibleStatuses.length,
+    filters: {
+      query: normalizedQuery,
+      status: normalizedStatus,
+    },
     repositoriesNeedingInstallation: statuses.filter(
       (repo) => repo.status === "needs-installation",
     ),
     repositoriesNeedingKnowledgeSync: statuses.filter(
       (repo) => repo.status === "needs-knowledge-sync",
     ),
-    repositories: orderedStatuses,
+    repositories: visibleStatuses,
     recentFailedJobs,
   };
 }

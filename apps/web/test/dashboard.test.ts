@@ -113,6 +113,36 @@ describe("dashboard console", () => {
     expect(readyResponse.body.ready).toBe(false);
   });
 
+  it("filters overview repositories by status and query", async () => {
+    const { app, store } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "needs-install",
+      config: defaultPatchPactConfig,
+    });
+
+    const statusResponse = await request(app)
+      .get("/api/overview")
+      .query({ status: "needs-installation" });
+    const queryResponse = await request(app)
+      .get("/api/overview")
+      .query({ q: "needs-install" });
+
+    expect(statusResponse.status).toBe(200);
+    expect(statusResponse.body.repositoryCount).toBe(2);
+    expect(statusResponse.body.visibleRepositoryCount).toBe(1);
+    expect(statusResponse.body.repositories[0].repo).toBe("needs-install");
+    expect(queryResponse.status).toBe(200);
+    expect(queryResponse.body.visibleRepositoryCount).toBe(1);
+    expect(queryResponse.body.repositories[0].repo).toBe("needs-install");
+  });
+
   it("renders repository onboarding checklist in html and json", async () => {
     const { app, store } = createHarness();
     await store.upsertRepository({

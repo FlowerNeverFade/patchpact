@@ -34,6 +34,7 @@ import {
 import {
   buildInstanceOverview,
   buildRepositoryOnboardingChecklist,
+  type RepositoryOnboardingPhase,
 } from "./overview.js";
 
 export interface CreateWebAppOptions {
@@ -68,8 +69,19 @@ function mergeConfig(
 }
 
 async function buildSetupData(env: PatchPactEnv, store: ArtifactStore) {
+  return buildSetupDataWithFilters(env, store, {});
+}
+
+async function buildSetupDataWithFilters(
+  env: PatchPactEnv,
+  store: ArtifactStore,
+  filters: {
+    query?: string;
+    status?: RepositoryOnboardingPhase | "all";
+  },
+) {
   const manifest = buildGitHubAppManifest(env);
-  const overview = await buildInstanceOverview(store);
+  const overview = await buildInstanceOverview(store, filters);
   return buildSetupConsoleData({
     baseUrl: env.PATCHPACT_BASE_URL,
     registrationUrl: buildGitHubAppRegistrationUrl(env),
@@ -84,6 +96,8 @@ async function buildSetupData(env: PatchPactEnv, store: ArtifactStore) {
       repositoryCount: overview.repositoryCount,
       installedRepositoryCount: overview.installedRepositoryCount,
       activeRepositoryCount: overview.activeRepositoryCount,
+      visibleRepositoryCount: overview.visibleRepositoryCount,
+      filters: overview.filters,
       repositories: overview.repositories.map((repo) => ({
         owner: repo.owner,
         repo: repo.repo,
@@ -147,9 +161,25 @@ export function createWebApp(options: CreateWebAppOptions) {
   });
 
   app.get("/setup", async (_request, response) => {
+    const query = String(_request.query.q ?? "").trim();
+    const statusRaw = String(_request.query.status ?? "all").trim();
+    const status =
+      statusRaw === "needs-installation" ||
+      statusRaw === "needs-knowledge-sync" ||
+      statusRaw === "configured" ||
+      statusRaw === "active"
+        ? statusRaw
+        : "all";
     response
       .type("html")
-      .send(renderSetupConsole(await buildSetupData(options.env, options.store)));
+      .send(
+        renderSetupConsole(
+          await buildSetupDataWithFilters(options.env, options.store, {
+            query,
+            status,
+          }),
+        ),
+      );
   });
 
   app.get("/setup/repositories/:owner/:repo", async (request, response) => {
@@ -209,11 +239,34 @@ export function createWebApp(options: CreateWebAppOptions) {
   });
 
   app.get("/api/setup", async (_request, response) => {
-    response.json(await buildSetupData(options.env, options.store));
+    const query = String(_request.query.q ?? "").trim();
+    const statusRaw = String(_request.query.status ?? "all").trim();
+    const status =
+      statusRaw === "needs-installation" ||
+      statusRaw === "needs-knowledge-sync" ||
+      statusRaw === "configured" ||
+      statusRaw === "active"
+        ? statusRaw
+        : "all";
+    response.json(
+      await buildSetupDataWithFilters(options.env, options.store, {
+        query,
+        status,
+      }),
+    );
   });
 
   app.get("/api/overview", async (_request, response) => {
-    response.json(await buildInstanceOverview(options.store));
+    const query = String(_request.query.q ?? "").trim();
+    const statusRaw = String(_request.query.status ?? "all").trim();
+    const status =
+      statusRaw === "needs-installation" ||
+      statusRaw === "needs-knowledge-sync" ||
+      statusRaw === "configured" ||
+      statusRaw === "active"
+        ? statusRaw
+        : "all";
+    response.json(await buildInstanceOverview(options.store, { query, status }));
   });
 
   app.get("/api/setup/repositories/:owner/:repo", async (request, response) => {

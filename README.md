@@ -123,6 +123,12 @@ http://localhost:3000/setup/github-app/callback
 http://localhost:3000/setup/repositories/<owner>/<repo>
 ```
 
+13. Filter setup and overview by status or query:
+
+```text
+http://localhost:3000/setup?status=needs-installation&q=acme
+```
+
 ## Container workflow
 
 Build the image:
@@ -317,6 +323,8 @@ The setup experience now also includes onboarding summaries for known repositori
 It now also includes a repository-by-repository action plan so operators can see the next recommended step for each connected repo at a glance.
 
 There is now also a dedicated onboarding checklist page per repository, so setup can drill from instance-level summary down to concrete repository-specific next steps.
+
+Setup and overview now also support filtering by repository status and free-text query so operators can narrow the action plan when many repositories are connected.
 
 ## Security boundaries
 

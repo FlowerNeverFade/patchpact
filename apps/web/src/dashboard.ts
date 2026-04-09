@@ -39,6 +39,11 @@ export interface SetupConsoleData {
     repositoryCount: number;
     installedRepositoryCount: number;
     activeRepositoryCount: number;
+    visibleRepositoryCount: number;
+    filters: {
+      query: string;
+      status: string;
+    };
     repositories: Array<{
       owner: string;
       repo: string;
@@ -910,6 +915,11 @@ export function buildSetupConsoleData(input: {
     repositoryCount: number;
     installedRepositoryCount: number;
     activeRepositoryCount: number;
+    visibleRepositoryCount: number;
+    filters: {
+      query: string;
+      status: string;
+    };
     repositories: Array<{
       owner: string;
       repo: string;
@@ -1079,6 +1089,7 @@ export function renderSetupConsole(data: SetupConsoleData): string {
             <li><strong>Known repositories</strong><br /><span class="small">${data.onboarding.repositoryCount}</span></li>
             <li><strong>Installed repositories</strong><br /><span class="small">${data.onboarding.installedRepositoryCount}</span></li>
             <li><strong>Active repositories</strong><br /><span class="small">${data.onboarding.activeRepositoryCount}</span></li>
+            <li><strong>Visible in current filter</strong><br /><span class="small">${data.onboarding.visibleRepositoryCount}</span></li>
           </ul>
         </article>
 
@@ -1135,6 +1146,27 @@ export function renderSetupConsole(data: SetupConsoleData): string {
       <section class="grid">
         <article class="card">
           <h2>Repository Action Plan</h2>
+          <form method="get" action="/setup">
+            <div class="split">
+              <label>Search repositories
+                <input name="q" value="${escapeHtml(data.onboarding.filters.query)}" placeholder="owner repo installed" />
+              </label>
+              <label>Status filter
+                <select name="status">
+                  ${["all", "needs-installation", "needs-knowledge-sync", "configured", "active"]
+                    .map(
+                      (status) =>
+                        `<option value="${status}"${data.onboarding.filters.status === status ? " selected" : ""}>${status}</option>`,
+                    )
+                    .join("")}
+                </select>
+              </label>
+            </div>
+            <div class="actions">
+              <button type="submit" class="secondary">Apply Filters</button>
+              <a class="badge" href="/setup">Clear Filters</a>
+            </div>
+          </form>
           <ul class="card-list">
             ${
               data.onboarding.repositories.length
