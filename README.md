@@ -329,6 +329,8 @@ Setup and overview now also support filtering by repository status and free-text
 
 Repository console pages now surface the same onboarding state directly, so maintainers can see the current repo's next recommended actions without leaving the console.
 
+Repository console, checklist, and job pages now also show action feedback banners after manual operations are queued, so operators get immediate confirmation instead of a silent redirect.
+
 ## Security boundaries
 
 - Issue, pull request, comment, and repository document content is treated as untrusted

@@ -22,6 +22,7 @@ import {
 } from "@patchpact/adapters";
 import {
   buildSetupConsoleData,
+  type NoticeData,
   renderContractDetailPage,
   renderDashboard,
   renderDecisionPacketDetailPage,
@@ -68,6 +69,27 @@ function mergeConfig(
   });
 }
 
+function getNoticeFromQuery(query: Record<string, unknown>): NoticeData | undefined {
+  const text = String(query.notice ?? "").trim();
+  if (!text) {
+    return undefined;
+  }
+  const kindRaw = String(query.noticeType ?? "info").trim();
+  const kind: NoticeData["kind"] =
+    kindRaw === "success" || kindRaw === "warning" || kindRaw === "info"
+      ? kindRaw
+      : "info";
+  return { kind, text };
+}
+
+function appendNoticeToPath(target: string, notice: NoticeData): string {
+  const base = target.startsWith("/") ? target : `/${target}`;
+  const url = new URL(base, "http://patchpact.local");
+  url.searchParams.set("notice", notice.text);
+  url.searchParams.set("noticeType", notice.kind);
+  return `${url.pathname}${url.search}`;
+}
+
 async function buildSetupData(env: PatchPactEnv, store: ArtifactStore) {
   return buildSetupDataWithFilters(env, store, {});
 }
@@ -79,6 +101,7 @@ async function buildSetupDataWithFilters(
     query?: string;
     status?: RepositoryOnboardingPhase | "all";
   },
+  notice?: NoticeData,
 ) {
   const manifest = buildGitHubAppManifest(env);
   const overview = await buildInstanceOverview(store, filters);
@@ -125,6 +148,7 @@ async function buildSetupDataWithFilters(
         error: job.error,
       })),
     },
+    notice,
     envStatus: {
       githubAppId: Boolean(env.PATCHPACT_GITHUB_APP_ID),
       githubPrivateKey: Boolean(env.PATCHPACT_GITHUB_PRIVATE_KEY),
@@ -177,7 +201,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           await buildSetupDataWithFilters(options.env, options.store, {
             query,
             status,
-          }),
+          }, getNoticeFromQuery(_request.query)),
         ),
       );
   });
@@ -203,6 +227,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           type: job.type,
           error: job.error,
         })),
+        notice: getNoticeFromQuery(request.query),
       }),
     );
   });
@@ -224,6 +249,10 @@ export function createWebApp(options: CreateWebAppOptions) {
           htmlUrl: exchange.html_url,
           installUrl: buildGitHubAppInstallUrl({ slug: exchange.slug }),
           envSnippet: buildGitHubAppEnvSnippet(exchange),
+          notice: {
+            kind: "success",
+            text: "GitHub App manifest exchange succeeded. Copy the generated credentials into your PatchPact environment.",
+          },
         }),
       );
     } catch (error) {
@@ -313,7 +342,7 @@ export function createWebApp(options: CreateWebAppOptions) {
       response.status(404).type("html").send("Job not found");
       return;
     }
-    response.type("html").send(renderJobDetailPage(job));
+    response.type("html").send(renderJobDetailPage(job, getNoticeFromQuery(request.query)));
   });
 
   app.get("/dashboard/:owner/:repo", async (request, response) => {
@@ -344,6 +373,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           knowledgeQuery,
           knowledgeQuery ? 10 : 6,
         ),
+        notice: getNoticeFromQuery(request.query),
         onboarding: checklist
           ? {
               status: checklist.repository.status,
@@ -374,6 +404,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           repo.repo,
           Number(request.params.issueNumber),
         ),
+        getNoticeFromQuery(request.query),
       ),
     );
   });
@@ -395,6 +426,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           repo.repo,
           Number(request.params.pullRequestNumber),
         ),
+        getNoticeFromQuery(request.query),
       ),
     );
   });
@@ -599,7 +631,13 @@ export function createWebApp(options: CreateWebAppOptions) {
     );
     response.redirect(
       303,
-      `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+      appendNoticeToPath(
+        `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+        {
+          kind: "success",
+          text: `Saved repository policy for ${request.params.owner}/${request.params.repo}.`,
+        },
+      ),
     );
   });
 
@@ -617,7 +655,13 @@ export function createWebApp(options: CreateWebAppOptions) {
     });
     response.redirect(
       303,
-      `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+      appendNoticeToPath(
+        `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+        {
+          kind: "success",
+          text: `Queued knowledge sync for ${request.params.owner}/${request.params.repo}.`,
+        },
+      ),
     );
   });
 
@@ -642,9 +686,15 @@ export function createWebApp(options: CreateWebAppOptions) {
     });
     response.redirect(
       303,
-      String(
-        request.body.redirectTo ||
-          `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+      appendNoticeToPath(
+        String(
+          request.body.redirectTo ||
+            `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+        ),
+        {
+          kind: "success",
+          text: `Queued contract refresh for issue #${issueNumber}.`,
+        },
       ),
     );
   });
@@ -669,9 +719,15 @@ export function createWebApp(options: CreateWebAppOptions) {
     });
     response.redirect(
       303,
-      String(
-        request.body.redirectTo ||
-          `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+      appendNoticeToPath(
+        String(
+          request.body.redirectTo ||
+            `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+        ),
+        {
+          kind: "success",
+          text: `Queued decision packet regeneration for PR #${pullRequestNumber}.`,
+        },
       ),
     );
   });
@@ -686,7 +742,16 @@ export function createWebApp(options: CreateWebAppOptions) {
       job.payload,
       `dashboard-retry:${job.type}:${Date.now()}`,
     );
-    response.redirect(303, `/dashboard/jobs/${encodeURIComponent(request.params.dedupeKey)}`);
+    response.redirect(
+      303,
+      appendNoticeToPath(
+        `/dashboard/jobs/${encodeURIComponent(request.params.dedupeKey)}`,
+        {
+          kind: "success",
+          text: `Queued retry for ${job.type}.`,
+        },
+      ),
+    );
   });
 
   return app;

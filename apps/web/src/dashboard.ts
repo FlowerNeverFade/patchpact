@@ -22,6 +22,7 @@ interface RepositoryConsoleData {
   waivers: WaiverRecord[];
   knowledgeResults: RepositoryKnowledgeChunk[];
   knowledgeQuery: string;
+  notice?: NoticeData;
   onboarding?: {
     status: string;
     summary: string;
@@ -84,6 +85,7 @@ export interface SetupConsoleData {
       error?: string;
     }>;
   };
+  notice?: NoticeData;
   checks: Array<{
     label: string;
     ready: boolean;
@@ -103,6 +105,7 @@ export interface GitHubAppCallbackConsoleData {
   htmlUrl?: string;
   installUrl: string | null;
   envSnippet: string;
+  notice?: NoticeData;
 }
 
 export interface RepositoryOnboardingChecklistPageData {
@@ -131,6 +134,12 @@ export interface RepositoryOnboardingChecklistPageData {
     type: string;
     error?: string;
   }>;
+  notice?: NoticeData;
+}
+
+export interface NoticeData {
+  kind: "success" | "warning" | "info";
+  text: string;
 }
 
 async function collectRepositorySnapshot(
@@ -270,6 +279,25 @@ function baseStyles(title: string, body: string): string {
       .pill-warn {
         background: rgba(217, 119, 6, 0.12);
         color: var(--danger);
+      }
+      .notice {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        border: 1px solid rgba(31, 29, 27, 0.08);
+        box-shadow: 0 10px 28px rgba(46, 37, 25, 0.06);
+      }
+      .notice-success {
+        background: rgba(14, 122, 102, 0.1);
+        color: #0d5d4f;
+      }
+      .notice-warning {
+        background: rgba(217, 119, 6, 0.12);
+        color: #8a4b07;
+      }
+      .notice-info {
+        background: rgba(31, 29, 27, 0.06);
+        color: var(--ink);
       }
       form {
         display: grid;
@@ -422,7 +450,7 @@ function renderStringItems(items: string[]): string {
   return `<ul class="card-list">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
 }
 
-export function renderJobDetailPage(job: JobRunRecord): string {
+export function renderJobDetailPage(job: JobRunRecord, notice?: NoticeData): string {
   const retryAction = `/dashboard/jobs/${encodeURIComponent(job.dedupeKey)}/retry`;
   const payloadJson = escapeHtml(JSON.stringify(job.payload, null, 2));
   const errorJson = job.error ? escapeHtml(job.error) : "";
@@ -442,6 +470,8 @@ export function renderJobDetailPage(job: JobRunRecord): string {
           <span class="badge">Key ${escapeHtml(job.dedupeKey)}</span>
         </div>
       </section>
+
+      ${renderNotice(notice)}
 
       <section class="grid-wide">
         <article class="card">
@@ -464,6 +494,13 @@ export function renderJobDetailPage(job: JobRunRecord): string {
       </section>
     `,
   );
+}
+
+function renderNotice(notice?: NoticeData): string {
+  if (!notice) {
+    return "";
+  }
+  return `<div class="notice notice-${notice.kind}">${escapeHtml(notice.text)}</div>`;
 }
 
 export async function renderDashboard(store: ArtifactStore): Promise<string> {
@@ -560,7 +597,7 @@ export async function renderDashboard(store: ArtifactStore): Promise<string> {
 }
 
 export function renderRepositoryConsole(data: RepositoryConsoleData): string {
-  const { repo, contracts, packets, waivers, knowledgeQuery, knowledgeResults, onboarding } = data;
+  const { repo, contracts, packets, waivers, knowledgeQuery, knowledgeResults, onboarding, notice } = data;
   return baseStyles(
     `${repo.owner}/${repo.repo} - PatchPact`,
     `
@@ -587,6 +624,8 @@ export function renderRepositoryConsole(data: RepositoryConsoleData): string {
           }
         </div>
       </section>
+
+      ${renderNotice(notice)}
 
       ${
         onboarding
@@ -734,6 +773,8 @@ export function renderRepositoryOnboardingChecklistPage(
         </div>
       </section>
 
+      ${renderNotice(data.notice)}
+
       <section class="grid-wide">
         <article class="card">
           <h2>Checklist</h2>
@@ -815,6 +856,7 @@ export function renderRepositoryOnboardingChecklistPage(
 export function renderContractDetailPage(
   repo: RepositoryRecord,
   contracts: ContractRecord[],
+  notice?: NoticeData,
 ): string {
   const latest = contracts[0];
   const repoHref = `/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`;
@@ -837,6 +879,8 @@ export function renderContractDetailPage(
           <a class="badge" href="/api/repositories/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/contracts/${latest.issueNumber}">Open JSON</a>
         </div>
       </section>
+
+      ${renderNotice(notice)}
 
       <section class="grid-wide">
         <article class="card">
@@ -890,6 +934,7 @@ export function renderContractDetailPage(
 export function renderDecisionPacketDetailPage(
   repo: RepositoryRecord,
   packets: DecisionPacketRecord[],
+  notice?: NoticeData,
 ): string {
   const latest = packets[0];
   const repoHref = `/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`;
@@ -912,6 +957,8 @@ export function renderDecisionPacketDetailPage(
           <a class="badge" href="/api/repositories/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/packets/${latest.pullRequestNumber}">Open JSON</a>
         </div>
       </section>
+
+      ${renderNotice(notice)}
 
       <section class="grid-wide">
         <article class="card">
@@ -1007,6 +1054,7 @@ export function buildSetupConsoleData(input: {
       error?: string;
     }>;
   };
+  notice?: NoticeData;
   envStatus: {
     githubAppId: boolean;
     githubPrivateKey: boolean;
@@ -1113,6 +1161,8 @@ export function renderSetupConsole(data: SetupConsoleData): string {
           <a class="badge" href="/api/setup">Open JSON Setup Data</a>
         </div>
       </section>
+
+      ${renderNotice(data.notice)}
 
       <section class="grid-wide">
         <article class="card">
@@ -1322,6 +1372,8 @@ export function renderGitHubAppCallbackConsole(
           }
         </div>
       </section>
+
+      ${renderNotice(data.notice)}
 
       <section class="grid-wide">
         <article class="card">

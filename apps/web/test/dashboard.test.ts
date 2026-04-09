@@ -219,6 +219,24 @@ describe("dashboard console", () => {
     expect(response.text).toContain("Open Full Checklist");
   });
 
+  it("renders notice banners from query params", async () => {
+    const { store, app } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
+
+    const response = await request(app)
+      .get("/dashboard/acme/patchpact-demo")
+      .query({ notice: "Queued knowledge sync.", noticeType: "success" });
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("Queued knowledge sync.");
+    expect(response.text).toContain("notice-success");
+  });
+
   it("exposes repository onboarding via the repository api", async () => {
     const { store, app } = createHarness();
     await store.upsertRepository({
@@ -325,7 +343,8 @@ describe("dashboard console", () => {
       });
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe("/dashboard/acme/patchpact-demo");
+    expect(response.headers.location).toContain("/dashboard/acme/patchpact-demo");
+    expect(response.headers.location).toContain("notice=");
     const saved = await store.getRepository("acme", "patchpact-demo");
     expect(saved?.config.mode).toBe("soft-gate");
     expect(saved?.config.provider).toBe("ollama");
@@ -350,6 +369,7 @@ describe("dashboard console", () => {
       .send({});
 
     expect(response.status).toBe(303);
+    expect(response.headers.location).toContain("notice=");
     const results = await store.searchKnowledgeChunks(
       "acme",
       "patchpact-demo",
