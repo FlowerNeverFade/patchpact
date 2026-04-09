@@ -241,6 +241,7 @@ describe("dashboard console", () => {
     expect(response.text).toContain("Open Full Checklist");
     expect(response.text).toContain("Recent Repository Jobs");
     expect(response.text).toContain("repo-job-1");
+    expect(response.text).toContain("Apply Job Filters");
   });
 
   it("renders notice banners from query params", async () => {
@@ -324,6 +325,74 @@ describe("dashboard console", () => {
     expect(response.status).toBe(200);
     expect(response.body.jobs.length).toBe(1);
     expect(response.body.jobs[0].dedupeKey).toBe("repo-job-2");
+    expect(response.body.total).toBe(1);
+  });
+
+  it("filters and paginates repository jobs", async () => {
+    const { store, app } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
+
+    await store.saveJobRun({
+      id: "job-a",
+      dedupeKey: "job-a",
+      type: "create-contract",
+      status: "completed",
+      payload: {
+        type: "create-contract",
+        owner: "acme",
+        repo: "patchpact-demo",
+        installationId: 1001,
+        issueNumber: 1,
+        requestedBy: "maintainer",
+      },
+    });
+    await store.saveJobRun({
+      id: "job-b",
+      dedupeKey: "job-b",
+      type: "generate-decision-packet",
+      status: "failed",
+      payload: {
+        type: "generate-decision-packet",
+        owner: "acme",
+        repo: "patchpact-demo",
+        installationId: 1001,
+        pullRequestNumber: 2,
+        requestedBy: "maintainer",
+      },
+    });
+    await store.saveJobRun({
+      id: "job-c",
+      dedupeKey: "job-c",
+      type: "sync-repository-knowledge",
+      status: "queued",
+      payload: {
+        type: "sync-repository-knowledge",
+        owner: "acme",
+        repo: "patchpact-demo",
+        installationId: 1001,
+        requestedBy: "dashboard",
+      },
+    });
+
+    const apiResponse = await request(app)
+      .get("/api/repositories/acme/patchpact-demo/jobs")
+      .query({ status: "failed", limit: 1, page: 1 });
+    const pageResponse = await request(app)
+      .get("/dashboard/acme/patchpact-demo")
+      .query({ jobStatus: "failed", jobType: "generate", jobPage: 1 });
+
+    expect(apiResponse.status).toBe(200);
+    expect(apiResponse.body.total).toBe(1);
+    expect(apiResponse.body.jobs[0].dedupeKey).toBe("job-b");
+    expect(pageResponse.status).toBe(200);
+    expect(pageResponse.text).toContain("Page 1 / 1");
+    expect(pageResponse.text).toContain("job-b");
+    expect(pageResponse.text).not.toContain("job-a");
   });
 
   it("renders contract and packet detail pages", async () => {

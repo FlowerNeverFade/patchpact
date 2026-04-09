@@ -30,6 +30,14 @@ interface RepositoryConsoleData {
     updatedAt: string;
     error?: string;
   }>;
+  jobsPagination?: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    status: string;
+    type: string;
+  };
   onboarding?: {
     status: string;
     summary: string;
@@ -604,7 +612,22 @@ export async function renderDashboard(store: ArtifactStore): Promise<string> {
 }
 
 export function renderRepositoryConsole(data: RepositoryConsoleData): string {
-  const { repo, contracts, packets, waivers, knowledgeQuery, knowledgeResults, onboarding, notice, recentJobs } = data;
+  const {
+    repo,
+    contracts,
+    packets,
+    waivers,
+    knowledgeQuery,
+    knowledgeResults,
+    onboarding,
+    notice,
+    recentJobs,
+    jobsPagination,
+  } = data;
+  const jobsPage = jobsPagination?.page ?? 1;
+  const jobsTotalPages = jobsPagination?.totalPages ?? 1;
+  const previousJobsPage = Math.max(1, jobsPage - 1);
+  const nextJobsPage = Math.min(jobsTotalPages, jobsPage + 1);
   return baseStyles(
     `${repo.owner}/${repo.repo} - PatchPact`,
     `
@@ -753,6 +776,30 @@ export function renderRepositoryConsole(data: RepositoryConsoleData): string {
 
         <article class="card">
           <h2>Recent Repository Jobs</h2>
+          <form method="get" action="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}">
+            <div class="split">
+              <label>Knowledge search
+                <input name="q" value="${escapeHtml(knowledgeQuery)}" placeholder="tests auth workflows" />
+              </label>
+              <label>Job status
+                <select name="jobStatus">
+                  ${["all", "queued", "processing", "completed", "failed"]
+                    .map(
+                      (status) =>
+                        `<option value="${status}"${jobsPagination?.status === status ? " selected" : ""}>${status}</option>`,
+                    )
+                    .join("")}
+                </select>
+              </label>
+              <label>Job type filter
+                <input name="jobType" value="${escapeHtml(jobsPagination?.type ?? "")}" placeholder="create-contract" />
+              </label>
+            </div>
+            <input type="hidden" name="jobPage" value="1" />
+            <div class="actions">
+              <button type="submit" class="secondary">Apply Job Filters</button>
+            </div>
+          </form>
           <ul class="card-list">
             ${
               recentJobs?.length
@@ -770,6 +817,24 @@ export function renderRepositoryConsole(data: RepositoryConsoleData): string {
                 : "<li>No repository-specific jobs recorded yet.</li>"
             }
           </ul>
+          ${
+            jobsPagination
+              ? `<div class="actions">
+                  <span class="badge">Jobs ${jobsPagination.total}</span>
+                  <span class="badge">Page ${jobsPagination.page} / ${jobsPagination.totalPages}</span>
+                  ${
+                    jobsPagination.page > 1
+                      ? `<a class="badge" href="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}?q=${encodeURIComponent(knowledgeQuery)}&jobStatus=${encodeURIComponent(jobsPagination.status)}&jobType=${encodeURIComponent(jobsPagination.type)}&jobPage=${previousJobsPage}">Previous</a>`
+                      : ""
+                  }
+                  ${
+                    jobsPagination.page < jobsPagination.totalPages
+                      ? `<a class="badge" href="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}?q=${encodeURIComponent(knowledgeQuery)}&jobStatus=${encodeURIComponent(jobsPagination.status)}&jobType=${encodeURIComponent(jobsPagination.type)}&jobPage=${nextJobsPage}">Next</a>`
+                      : ""
+                  }
+                </div>`
+              : ""
+          }
         </article>
       </section>
     `,

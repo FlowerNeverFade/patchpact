@@ -36,19 +36,87 @@ export interface RepositoryOnboardingChecklist {
   recentFailedJobs: JobRunRecord[];
 }
 
-export async function listRepositoryJobs(
+export interface RepositoryJobsFilters {
+  status?: JobRunRecord["status"] | "all";
+  type?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface RepositoryJobsPage {
+  jobs: JobRunRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  filters: {
+    status: JobRunRecord["status"] | "all";
+    type: string;
+  };
+}
+
+async function getRepositoryJobsBase(
   store: ArtifactStore,
   owner: string,
   repo: string,
-  limit = 20,
+  limit = 100,
 ): Promise<JobRunRecord[]> {
   const jobs = await store.listJobRuns(Math.max(limit, 50));
   return jobs
     .filter((job) => {
       const payload = job.payload as Partial<{ owner: string; repo: string }>;
       return payload.owner === owner && payload.repo === repo;
-    })
-    .slice(0, limit);
+    });
+}
+
+export async function listRepositoryJobs(
+  store: ArtifactStore,
+  owner: string,
+  repo: string,
+  limit = 20,
+): Promise<JobRunRecord[]> {
+  return (await getRepositoryJobsBase(store, owner, repo, limit)).slice(0, limit);
+}
+
+export async function buildRepositoryJobsPage(
+  store: ArtifactStore,
+  owner: string,
+  repo: string,
+  filters: RepositoryJobsFilters = {},
+): Promise<RepositoryJobsPage> {
+  const status = filters.status ?? "all";
+  const type = filters.type?.trim().toLowerCase() ?? "";
+  const pageSize = Math.max(1, Math.min(filters.pageSize ?? 10, 50));
+  const page = Math.max(1, filters.page ?? 1);
+
+  const baseJobs = await getRepositoryJobsBase(store, owner, repo, 200);
+  const filteredJobs = baseJobs.filter((job) => {
+    if (status !== "all" && job.status !== status) {
+      return false;
+    }
+    if (type && !job.type.toLowerCase().includes(type)) {
+      return false;
+    }
+    return true;
+  });
+
+  const total = filteredJobs.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const normalizedPage = Math.min(page, totalPages);
+  const start = (normalizedPage - 1) * pageSize;
+  const jobs = filteredJobs.slice(start, start + pageSize);
+
+  return {
+    jobs,
+    total,
+    page: normalizedPage,
+    pageSize,
+    totalPages,
+    filters: {
+      status,
+      type,
+    },
+  };
 }
 
 export interface InstanceOverview {

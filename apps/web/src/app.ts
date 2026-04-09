@@ -34,6 +34,7 @@ import {
 } from "./dashboard.js";
 import {
   buildInstanceOverview,
+  buildRepositoryJobsPage,
   buildRepositoryOnboardingChecklist,
   listRepositoryJobs,
   type RepositoryOnboardingPhase,
@@ -434,26 +435,48 @@ export function createWebApp(options: CreateWebAppOptions) {
       return;
     }
     const knowledgeQuery = String(request.query.q ?? "").trim();
+    const jobStatusRaw = String(request.query.jobStatus ?? "all").trim();
+    const jobStatus =
+      jobStatusRaw === "queued" ||
+      jobStatusRaw === "processing" ||
+      jobStatusRaw === "completed" ||
+      jobStatusRaw === "failed"
+        ? jobStatusRaw
+        : "all";
+    const jobType = String(request.query.jobType ?? "").trim();
+    const jobPage = Math.max(1, Number(request.query.jobPage ?? 1) || 1);
     const checklist = await buildRepositoryOnboardingChecklist(
       options.store,
       repo.owner,
       repo.repo,
     );
+    const repositoryJobs = await buildRepositoryJobsPage(options.store, repo.owner, repo.repo, {
+      status: jobStatus,
+      type: jobType,
+      page: jobPage,
+      pageSize: 6,
+    });
     response.type("html").send(
       renderRepositoryConsole({
         repo,
         contracts: await options.store.listContracts(repo.owner, repo.repo),
         packets: await options.store.listDecisionPackets(repo.owner, repo.repo),
         waivers: await options.store.listWaivers(repo.owner, repo.repo),
-        recentJobs: (await listRepositoryJobs(options.store, repo.owner, repo.repo, 12)).map(
-          (job) => ({
-            dedupeKey: job.dedupeKey,
-            type: job.type,
-            status: job.status,
-            updatedAt: job.updatedAt,
-            error: job.error,
-          }),
-        ),
+        recentJobs: repositoryJobs.jobs.map((job) => ({
+          dedupeKey: job.dedupeKey,
+          type: job.type,
+          status: job.status,
+          updatedAt: job.updatedAt,
+          error: job.error,
+        })),
+        jobsPagination: {
+          total: repositoryJobs.total,
+          page: repositoryJobs.page,
+          pageSize: repositoryJobs.pageSize,
+          totalPages: repositoryJobs.totalPages,
+          status: repositoryJobs.filters.status,
+          type: repositoryJobs.filters.type,
+        },
         knowledgeQuery,
         knowledgeResults: await options.store.searchKnowledgeChunks(
           repo.owner,
@@ -604,13 +627,30 @@ export function createWebApp(options: CreateWebAppOptions) {
   });
 
   app.get("/api/repositories/:owner/:repo/jobs", async (request, response) => {
+    const jobStatusRaw = String(request.query.status ?? "all").trim();
+    const status =
+      jobStatusRaw === "queued" ||
+      jobStatusRaw === "processing" ||
+      jobStatusRaw === "completed" ||
+      jobStatusRaw === "failed"
+        ? jobStatusRaw
+        : "all";
+    const type = String(request.query.type ?? "").trim();
+    const page = Math.max(1, Number(request.query.page ?? 1) || 1);
+    const pageSize = Math.max(1, Math.min(Number(request.query.limit ?? 20) || 20, 50));
+    const jobPage = await buildRepositoryJobsPage(
+      options.store,
+      request.params.owner,
+      request.params.repo,
+      {
+        status,
+        type,
+        page,
+        pageSize,
+      },
+    );
     response.json({
-      jobs: await listRepositoryJobs(
-        options.store,
-        request.params.owner,
-        request.params.repo,
-        Number.isFinite(Number(request.query.limit)) ? Number(request.query.limit) : 20,
-      ),
+      ...jobPage,
     });
   });
 
