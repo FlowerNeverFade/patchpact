@@ -213,7 +213,13 @@ export function createWebApp(options: CreateWebAppOptions) {
       request.params.repo,
     );
     if (!checklist) {
-      response.status(404).type("html").send("Repository not found");
+      response.redirect(
+        303,
+        appendNoticeToPath("/setup", {
+          kind: "warning",
+          text: `Repository ${request.params.owner}/${request.params.repo} was not found.`,
+        }),
+      );
       return;
     }
     response.type("html").send(
@@ -235,7 +241,13 @@ export function createWebApp(options: CreateWebAppOptions) {
   app.get("/setup/github-app/callback", async (request, response) => {
     const code = String(request.query.code ?? "").trim();
     if (!code) {
-      response.status(400).type("html").send("Missing GitHub App manifest exchange code.");
+      response.redirect(
+        303,
+        appendNoticeToPath("/setup", {
+          kind: "warning",
+          text: "Missing GitHub App manifest exchange code.",
+        }),
+      );
       return;
     }
 
@@ -256,14 +268,15 @@ export function createWebApp(options: CreateWebAppOptions) {
         }),
       );
     } catch (error) {
-      response
-        .status(502)
-        .type("html")
-        .send(
-          `GitHub manifest exchange failed: ${
+      response.redirect(
+        303,
+        appendNoticeToPath("/setup", {
+          kind: "warning",
+          text: `GitHub manifest exchange failed: ${
             error instanceof Error ? error.message : String(error)
           }`,
-        );
+        }),
+      );
     }
   });
 
@@ -339,7 +352,13 @@ export function createWebApp(options: CreateWebAppOptions) {
   app.get("/dashboard/jobs/:dedupeKey", async (request, response) => {
     const job = await options.store.getJobRun(request.params.dedupeKey);
     if (!job) {
-      response.status(404).type("html").send("Job not found");
+      response.redirect(
+        303,
+        appendNoticeToPath("/dashboard", {
+          kind: "warning",
+          text: `Job ${request.params.dedupeKey} was not found.`,
+        }),
+      );
       return;
     }
     response.type("html").send(renderJobDetailPage(job, getNoticeFromQuery(request.query)));
@@ -351,7 +370,13 @@ export function createWebApp(options: CreateWebAppOptions) {
       request.params.repo,
     );
     if (!repo) {
-      response.status(404).type("html").send("Repository not found");
+      response.redirect(
+        303,
+        appendNoticeToPath("/setup", {
+          kind: "warning",
+          text: `Repository ${request.params.owner}/${request.params.repo} was not found.`,
+        }),
+      );
       return;
     }
     const knowledgeQuery = String(request.query.q ?? "").trim();
@@ -393,7 +418,13 @@ export function createWebApp(options: CreateWebAppOptions) {
       request.params.repo,
     );
     if (!repo) {
-      response.status(404).type("html").send("Repository not found");
+      response.redirect(
+        303,
+        appendNoticeToPath("/setup", {
+          kind: "warning",
+          text: `Repository ${request.params.owner}/${request.params.repo} was not found.`,
+        }),
+      );
       return;
     }
     response.type("html").send(
@@ -415,7 +446,13 @@ export function createWebApp(options: CreateWebAppOptions) {
       request.params.repo,
     );
     if (!repo) {
-      response.status(404).type("html").send("Repository not found");
+      response.redirect(
+        303,
+        appendNoticeToPath("/setup", {
+          kind: "warning",
+          text: `Repository ${request.params.owner}/${request.params.repo} was not found.`,
+        }),
+      );
       return;
     }
     response.type("html").send(
@@ -617,7 +654,16 @@ export function createWebApp(options: CreateWebAppOptions) {
       testGlobs: parseTextareaList(request.body.testGlobs),
     });
     if (!parsed.success) {
-      response.status(400).type("html").send(parsed.error.message);
+      response.redirect(
+        303,
+        appendNoticeToPath(
+          `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+          {
+            kind: "warning",
+            text: "Repository policy could not be saved because the submitted form values were invalid.",
+          },
+        ),
+      );
       return;
     }
     const existing = await options.store.getRepository(
@@ -646,6 +692,16 @@ export function createWebApp(options: CreateWebAppOptions) {
       request.params.owner,
       request.params.repo,
     );
+    if (!repo) {
+      response.redirect(
+        303,
+        appendNoticeToPath("/setup", {
+          kind: "warning",
+          text: `Repository ${request.params.owner}/${request.params.repo} was not found.`,
+        }),
+      );
+      return;
+    }
     await options.engine.queueKnowledgeSync({
       owner: request.params.owner,
       repo: request.params.repo,
@@ -668,7 +724,19 @@ export function createWebApp(options: CreateWebAppOptions) {
   app.post("/dashboard/:owner/:repo/actions/refresh-contract", async (request, response) => {
     const issueNumber = Number(request.body.issueNumber);
     if (!Number.isFinite(issueNumber)) {
-      response.status(400).type("html").send("issueNumber is required");
+      response.redirect(
+        303,
+        appendNoticeToPath(
+          String(
+            request.body.redirectTo ||
+              `/setup/repositories/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+          ),
+          {
+            kind: "warning",
+            text: "A valid issue number is required to refresh a contract.",
+          },
+        ),
+      );
       return;
     }
     const repo = await options.store.getRepository(
@@ -702,7 +770,19 @@ export function createWebApp(options: CreateWebAppOptions) {
   app.post("/dashboard/:owner/:repo/actions/regenerate-packet", async (request, response) => {
     const pullRequestNumber = Number(request.body.pullRequestNumber);
     if (!Number.isFinite(pullRequestNumber)) {
-      response.status(400).type("html").send("pullRequestNumber is required");
+      response.redirect(
+        303,
+        appendNoticeToPath(
+          String(
+            request.body.redirectTo ||
+              `/setup/repositories/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+          ),
+          {
+            kind: "warning",
+            text: "A valid pull request number is required to regenerate a decision packet.",
+          },
+        ),
+      );
       return;
     }
     const repo = await options.store.getRepository(
@@ -735,7 +815,13 @@ export function createWebApp(options: CreateWebAppOptions) {
   app.post("/dashboard/jobs/:dedupeKey/retry", async (request, response) => {
     const job = await options.store.getJobRun(request.params.dedupeKey);
     if (!job) {
-      response.status(404).type("html").send("Job not found");
+      response.redirect(
+        303,
+        appendNoticeToPath("/dashboard", {
+          kind: "warning",
+          text: `Job ${request.params.dedupeKey} was not found.`,
+        }),
+      );
       return;
     }
     await options.engine.requeueStoredJob(

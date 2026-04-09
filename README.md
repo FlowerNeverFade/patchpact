@@ -331,6 +331,8 @@ Repository console pages now surface the same onboarding state directly, so main
 
 Repository console, checklist, and job pages now also show action feedback banners after manual operations are queued, so operators get immediate confirmation instead of a silent redirect.
 
+Common setup and dashboard errors now also round-trip back into those pages as warning notices, instead of dropping operators onto raw error text.
+
 ## Security boundaries
 
 - Issue, pull request, comment, and repository document content is treated as untrusted

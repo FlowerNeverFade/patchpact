@@ -200,6 +200,15 @@ describe("dashboard console", () => {
     );
   });
 
+  it("redirects setup callback failures back to setup with a warning notice", async () => {
+    const { app } = createHarness();
+    const missingCodeResponse = await request(app).get("/setup/github-app/callback");
+
+    expect(missingCodeResponse.status).toBe(303);
+    expect(missingCodeResponse.headers.location).toContain("/setup");
+    expect(missingCodeResponse.headers.location).toContain("noticeType=warning");
+  });
+
   it("renders a repository console page", async () => {
     const { store, app } = createHarness();
     await store.upsertRepository({
@@ -352,6 +361,27 @@ describe("dashboard console", () => {
       "Require maintainer approval",
       "Require tests",
     ]);
+  });
+
+  it("redirects invalid repository config submissions with a warning notice", async () => {
+    const { store, app } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
+
+    const response = await request(app)
+      .post("/dashboard/acme/patchpact-demo/config")
+      .type("form")
+      .send({
+        mode: "not-a-real-mode",
+      });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.location).toContain("/dashboard/acme/patchpact-demo");
+    expect(response.headers.location).toContain("noticeType=warning");
   });
 
   it("syncs knowledge from the dashboard action", async () => {
