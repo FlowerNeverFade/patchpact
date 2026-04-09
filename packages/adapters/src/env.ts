@@ -24,6 +24,7 @@ export const patchPactEnvSchema = z.object({
     .string()
     .default("Contract-first GitHub App for open source maintainers."),
   PATCHPACT_GITHUB_APP_PUBLIC: booleanFromString.default(false),
+  PATCHPACT_GITHUB_APP_REGISTRATION_OWNER: z.string().optional(),
   PATCHPACT_INLINE_JOBS: booleanFromString.default(true),
   PATCHPACT_STORAGE: z.enum(["memory", "postgres"]).default("memory"),
   PATCHPACT_GITHUB_APP_ID: z.string().optional(),
@@ -74,6 +75,17 @@ export interface GitHubAppManifest {
   setup_on_update: boolean;
   default_permissions: Record<string, "read" | "write">;
   default_events: string[];
+}
+
+export interface GitHubAppManifestExchangeResult {
+  id: number;
+  slug: string;
+  client_id: string;
+  client_secret: string;
+  webhook_secret: string;
+  pem: string;
+  name?: string;
+  html_url?: string;
 }
 
 export function parseEnv(source: NodeJS.ProcessEnv = process.env): PatchPactEnv {
@@ -151,6 +163,7 @@ export function buildGitHubAppManifest(env: PatchPactEnv): GitHubAppManifest {
   const baseUrl = env.PATCHPACT_BASE_URL.replace(/\/$/, "");
   const setupUrl = `${baseUrl}/setup`;
   const webhookUrl = `${baseUrl}/webhooks/github`;
+  const redirectUrl = `${baseUrl}/setup/github-app/callback`;
 
   return {
     name: env.PATCHPACT_GITHUB_APP_NAME,
@@ -163,6 +176,7 @@ export function buildGitHubAppManifest(env: PatchPactEnv): GitHubAppManifest {
       url: webhookUrl,
       active: true,
     },
+    redirect_url: redirectUrl,
     request_oauth_on_install: false,
     setup_on_update: true,
     default_permissions: {
@@ -181,6 +195,91 @@ export function buildGitHubAppManifest(env: PatchPactEnv): GitHubAppManifest {
       "push",
     ],
   };
+}
+
+export function buildGitHubAppRegistrationUrl(env: PatchPactEnv): string {
+  const owner = env.PATCHPACT_GITHUB_APP_REGISTRATION_OWNER?.trim();
+  return owner
+    ? `https://github.com/organizations/${owner}/settings/apps/new`
+    : "https://github.com/settings/apps/new";
+}
+
+export function buildGitHubAppInstallUrl(input: {
+  slug?: string;
+  appName?: string;
+}): string | null {
+  const slug =
+    input.slug?.trim() ||
+    input.appName
+      ?.trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  if (!slug) {
+    return null;
+  }
+  return `https://github.com/apps/${slug}/installations/new`;
+}
+
+export async function exchangeGitHubAppManifestCode(
+  code: string,
+): Promise<GitHubAppManifestExchangeResult> {
+  const response = await fetch(`https://api.github.com/app-manifests/${encodeURIComponent(code)}/conversions`, {
+    method: "POST",
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "patchpact",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`GitHub manifest exchange failed with status ${response.status}`);
+  }
+
+  const json = (await response.json()) as GitHubAppManifestExchangeResult & {
+    id?: number;
+    client_id?: string;
+    client_secret?: string;
+    webhook_secret?: string;
+    pem?: string;
+    slug?: string;
+  };
+
+  if (
+    !json.id ||
+    !json.client_id ||
+    !json.client_secret ||
+    !json.webhook_secret ||
+    !json.pem ||
+    !json.slug
+  ) {
+    throw new Error("GitHub manifest exchange response was missing required fields.");
+  }
+
+  return {
+    id: json.id,
+    slug: json.slug,
+    client_id: json.client_id,
+    client_secret: json.client_secret,
+    webhook_secret: json.webhook_secret,
+    pem: json.pem,
+    name: json.name,
+    html_url: json.html_url,
+  };
+}
+
+export function buildGitHubAppEnvSnippet(
+  exchange: GitHubAppManifestExchangeResult,
+): string {
+  return [
+    `PATCHPACT_GITHUB_APP_ID=${exchange.id}`,
+    `PATCHPACT_GITHUB_CLIENT_ID=${exchange.client_id}`,
+    `PATCHPACT_GITHUB_CLIENT_SECRET=${exchange.client_secret}`,
+    `PATCHPACT_GITHUB_WEBHOOK_SECRET=${exchange.webhook_secret}`,
+    "PATCHPACT_GITHUB_PRIVATE_KEY=\"\"\"",
+    exchange.pem.trimEnd(),
+    "\"\"\"",
+  ].join("\n");
 }
 
 function loadEnvFile(path: string): void {

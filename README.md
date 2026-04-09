@@ -111,6 +111,12 @@ http://localhost:3000/setup
 npm run dev:cli -- print-github-app-manifest
 ```
 
+11. If you use the manifest flow, GitHub can redirect back to PatchPact here:
+
+```text
+http://localhost:3000/setup/github-app/callback
+```
+
 ## Container workflow
 
 Build the image:
@@ -259,8 +265,10 @@ npm run dev:cli -- print-github-app-manifest
 - `GET /dashboard/:owner/:repo`
 - `GET /dashboard/jobs/:dedupeKey`
 - `GET /setup`
+- `GET /setup/github-app/callback`
 - `GET /api/setup`
 - `GET /api/setup/github-app-manifest`
+- `GET /api/setup/github-app-manifest/exchange`
 - `GET /dashboard/:owner/:repo/contracts/:issueNumber`
 - `GET /dashboard/:owner/:repo/packets/:pullRequestNumber`
 - `GET /api/repositories`
@@ -292,6 +300,8 @@ Each connected repository now has a dedicated console page where maintainers can
 The dashboard now also includes job detail pages so operators can inspect stored webhook/task payloads and retry failed jobs from the browser.
 
 The setup guide now includes a copyable GitHub App manifest so you can mirror PatchPact's required permissions, events, webhook URL, and base settings without rebuilding them by hand.
+
+The manifest flow can now also exchange GitHub's callback code and turn the response into a ready-to-copy `.env.local` snippet for PatchPact.
 
 ## Security boundaries
 

@@ -27,6 +27,7 @@ interface RepositoryConsoleData {
 export interface SetupConsoleData {
   baseUrl: string;
   webhookUrl: string;
+  registrationUrl: string;
   inlineJobs: boolean;
   storage: string;
   provider: string;
@@ -44,6 +45,15 @@ export interface SetupConsoleData {
     scope: string;
     access: string;
   }>;
+}
+
+export interface GitHubAppCallbackConsoleData {
+  appName: string;
+  slug: string;
+  appId: number;
+  htmlUrl?: string;
+  installUrl: string | null;
+  envSnippet: string;
 }
 
 async function collectRepositorySnapshot(
@@ -726,6 +736,7 @@ export function renderDecisionPacketDetailPage(
 
 export function buildSetupConsoleData(input: {
   baseUrl: string;
+  registrationUrl: string;
   inlineJobs: boolean;
   storage: string;
   provider: string;
@@ -748,6 +759,7 @@ export function buildSetupConsoleData(input: {
   return {
     baseUrl: input.baseUrl,
     webhookUrl: `${input.baseUrl.replace(/\/$/, "")}/webhooks/github`,
+    registrationUrl: input.registrationUrl,
     inlineJobs: input.inlineJobs,
     storage: input.storage,
     provider: input.provider,
@@ -860,6 +872,8 @@ export function renderSetupConsole(data: SetupConsoleData): string {
           <pre>${escapeHtml(data.baseUrl)}</pre>
           <p>Webhook URL</p>
           <pre>${escapeHtml(data.webhookUrl)}</pre>
+          <p>Manifest Registration URL</p>
+          <pre>${escapeHtml(data.registrationUrl)}</pre>
           <p class="small">Storage <code>${escapeHtml(data.storage)}</code> | Inline jobs <code>${String(data.inlineJobs)}</code> | Default provider <code>${escapeHtml(data.provider)}</code></p>
         </article>
       </section>
@@ -875,6 +889,10 @@ export function renderSetupConsole(data: SetupConsoleData): string {
           <div class="actions">
             <a class="badge" href="/api/setup/github-app-manifest">Open Manifest JSON</a>
           </div>
+          <form method="post" action="${escapeHtml(data.registrationUrl)}">
+            <textarea name="manifest" hidden>${escapeHtml(data.manifest.json)}</textarea>
+            <button type="submit">Register GitHub App from Manifest</button>
+          </form>
         </article>
       </section>
 
@@ -903,6 +921,59 @@ export function renderSetupConsole(data: SetupConsoleData): string {
             <li>Install the GitHub App on a test repository and watch for the installation event in the dashboard.</li>
             <li>Open the repository console and run a manual knowledge sync after setup.</li>
           </ul>
+        </article>
+      </section>
+    `,
+  );
+}
+
+export function renderGitHubAppCallbackConsole(
+  data: GitHubAppCallbackConsoleData,
+): string {
+  return baseStyles(
+    "PatchPact GitHub App Callback",
+    `
+      <section class="hero">
+        <span class="eyebrow">GitHub App Created</span>
+        <h1>${escapeHtml(data.appName)}</h1>
+        <p>
+          GitHub returned a fresh app configuration. PatchPact is showing the values you need to place into your local or deployed runtime configuration.
+        </p>
+        <div class="actions">
+          <a class="badge" href="/setup">Back to Setup</a>
+          ${
+            data.htmlUrl
+              ? `<a class="badge" href="${escapeHtml(data.htmlUrl)}">Open App Settings</a>`
+              : ""
+          }
+          ${
+            data.installUrl
+              ? `<a class="badge" href="${escapeHtml(data.installUrl)}">Open Install Page</a>`
+              : ""
+          }
+        </div>
+      </section>
+
+      <section class="grid-wide">
+        <article class="card">
+          <h2>App Details</h2>
+          <ul class="card-list">
+            <li><strong>Slug</strong><br /><span class="small mono">${escapeHtml(data.slug)}</span></li>
+            <li><strong>App ID</strong><br /><span class="small mono">${data.appId}</span></li>
+            ${
+              data.installUrl
+                ? `<li><strong>Install URL</strong><br /><span class="small mono">${escapeHtml(data.installUrl)}</span></li>`
+                : ""
+            }
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>.env.local Snippet</h2>
+          <p class="small">
+            Copy these values into <code>.env.local</code> or your deployment secret manager before restarting PatchPact.
+          </p>
+          <pre class="mono">${escapeHtml(data.envSnippet)}</pre>
         </article>
       </section>
     `,

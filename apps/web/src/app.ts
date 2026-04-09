@@ -12,7 +12,11 @@ import {
   verifyGitHubSignature,
 } from "@patchpact/core";
 import {
+  buildGitHubAppEnvSnippet,
+  buildGitHubAppInstallUrl,
   buildGitHubAppManifest,
+  buildGitHubAppRegistrationUrl,
+  exchangeGitHubAppManifestCode,
   getRuntimeReadiness,
   type PatchPactEnv,
 } from "@patchpact/adapters";
@@ -21,6 +25,7 @@ import {
   renderContractDetailPage,
   renderDashboard,
   renderDecisionPacketDetailPage,
+  renderGitHubAppCallbackConsole,
   renderJobDetailPage,
   renderRepositoryConsole,
   renderSetupConsole,
@@ -61,6 +66,7 @@ function buildSetupData(env: PatchPactEnv) {
   const manifest = buildGitHubAppManifest(env);
   return buildSetupConsoleData({
     baseUrl: env.PATCHPACT_BASE_URL,
+    registrationUrl: buildGitHubAppRegistrationUrl(env),
     inlineJobs: env.PATCHPACT_INLINE_JOBS,
     storage: env.PATCHPACT_STORAGE,
     provider: env.PATCHPACT_DEFAULT_PROVIDER,
@@ -107,12 +113,64 @@ export function createWebApp(options: CreateWebAppOptions) {
     response.type("html").send(renderSetupConsole(buildSetupData(options.env)));
   });
 
+  app.get("/setup/github-app/callback", async (request, response) => {
+    const code = String(request.query.code ?? "").trim();
+    if (!code) {
+      response.status(400).type("html").send("Missing GitHub App manifest exchange code.");
+      return;
+    }
+
+    try {
+      const exchange = await exchangeGitHubAppManifestCode(code);
+      response.type("html").send(
+        renderGitHubAppCallbackConsole({
+          appName: exchange.name ?? options.env.PATCHPACT_GITHUB_APP_NAME,
+          slug: exchange.slug,
+          appId: exchange.id,
+          htmlUrl: exchange.html_url,
+          installUrl: buildGitHubAppInstallUrl({ slug: exchange.slug }),
+          envSnippet: buildGitHubAppEnvSnippet(exchange),
+        }),
+      );
+    } catch (error) {
+      response
+        .status(502)
+        .type("html")
+        .send(
+          `GitHub manifest exchange failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+    }
+  });
+
   app.get("/api/setup", async (_request, response) => {
     response.json(buildSetupData(options.env));
   });
 
   app.get("/api/setup/github-app-manifest", async (_request, response) => {
     response.json(buildGitHubAppManifest(options.env));
+  });
+
+  app.get("/api/setup/github-app-manifest/exchange", async (request, response) => {
+    const code = String(request.query.code ?? "").trim();
+    if (!code) {
+      response.status(400).json({ error: "Missing code query parameter" });
+      return;
+    }
+
+    try {
+      const exchange = await exchangeGitHubAppManifestCode(code);
+      response.json({
+        exchange,
+        installUrl: buildGitHubAppInstallUrl({ slug: exchange.slug }),
+        envSnippet: buildGitHubAppEnvSnippet(exchange),
+      });
+    } catch (error) {
+      response.status(502).json({
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   app.get("/dashboard/jobs/:dedupeKey", async (request, response) => {

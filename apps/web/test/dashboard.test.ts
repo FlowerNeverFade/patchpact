@@ -1,5 +1,5 @@
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PatchPactEngine, defaultPatchPactConfig, type PatchPactJob } from "@patchpact/core";
 import {
   InlineJobBus,
@@ -64,6 +64,10 @@ function createHarness() {
   return { env, store, github, app: createWebApp({ env, store, github, engine }) };
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("dashboard console", () => {
   it("renders setup guidance and setup json", async () => {
     const { app } = createHarness();
@@ -79,14 +83,51 @@ describe("dashboard console", () => {
     expect(apiResponse.status).toBe(200);
     expect(apiResponse.body.webhookUrl).toBe("http://localhost:3000/webhooks/github");
     expect(apiResponse.body.requiredEvents).toContain("pull_request");
+    expect(apiResponse.body.registrationUrl).toBe("https://github.com/settings/apps/new");
     expect(manifestResponse.status).toBe(200);
     expect(manifestResponse.body.name).toBe("PatchPact Test");
     expect(pageResponse.text).toContain("PatchPact Test");
+    expect(pageResponse.text).toContain("Register GitHub App from Manifest");
     expect(manifestResponse.body.hook_attributes.url).toBe(
       "http://localhost:3000/webhooks/github",
     );
     expect(readyResponse.status).toBe(503);
     expect(readyResponse.body.ready).toBe(false);
+  });
+
+  it("renders GitHub App manifest callback results in html and json", async () => {
+    const { app } = createHarness();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          id: 12345,
+          slug: "patchpact-test",
+          client_id: "Iv1.client",
+          client_secret: "client-secret",
+          webhook_secret: "webhook-secret",
+          pem: "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n",
+          name: "PatchPact Test",
+          html_url: "https://github.com/settings/apps/patchpact-test",
+        }),
+      })),
+    );
+
+    const pageResponse = await request(app).get("/setup/github-app/callback?code=test-code");
+    const apiResponse = await request(app).get(
+      "/api/setup/github-app-manifest/exchange?code=test-code",
+    );
+
+    expect(pageResponse.status).toBe(200);
+    expect(pageResponse.text).toContain("GitHub App Created");
+    expect(pageResponse.text).toContain("PATCHPACT_GITHUB_APP_ID=12345");
+    expect(pageResponse.text).toContain("patchpact-test");
+    expect(apiResponse.status).toBe(200);
+    expect(apiResponse.body.exchange.id).toBe(12345);
+    expect(apiResponse.body.installUrl).toBe(
+      "https://github.com/apps/patchpact-test/installations/new",
+    );
   });
 
   it("renders a repository console page", async () => {
