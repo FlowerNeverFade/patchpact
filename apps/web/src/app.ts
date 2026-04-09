@@ -11,7 +11,11 @@ import {
   type RepositoryRecord,
   verifyGitHubSignature,
 } from "@patchpact/core";
-import { getRuntimeReadiness, type PatchPactEnv } from "@patchpact/adapters";
+import {
+  buildGitHubAppManifest,
+  getRuntimeReadiness,
+  type PatchPactEnv,
+} from "@patchpact/adapters";
 import {
   buildSetupConsoleData,
   renderContractDetailPage,
@@ -54,11 +58,16 @@ function mergeConfig(
 }
 
 function buildSetupData(env: PatchPactEnv) {
+  const manifest = buildGitHubAppManifest(env);
   return buildSetupConsoleData({
     baseUrl: env.PATCHPACT_BASE_URL,
     inlineJobs: env.PATCHPACT_INLINE_JOBS,
     storage: env.PATCHPACT_STORAGE,
     provider: env.PATCHPACT_DEFAULT_PROVIDER,
+    manifest: {
+      name: manifest.name,
+      json: JSON.stringify(manifest, null, 2),
+    },
     envStatus: {
       githubAppId: Boolean(env.PATCHPACT_GITHUB_APP_ID),
       githubPrivateKey: Boolean(env.PATCHPACT_GITHUB_PRIVATE_KEY),
@@ -100,6 +109,10 @@ export function createWebApp(options: CreateWebAppOptions) {
 
   app.get("/api/setup", async (_request, response) => {
     response.json(buildSetupData(options.env));
+  });
+
+  app.get("/api/setup/github-app-manifest", async (_request, response) => {
+    response.json(buildGitHubAppManifest(options.env));
   });
 
   app.get("/dashboard/jobs/:dedupeKey", async (request, response) => {

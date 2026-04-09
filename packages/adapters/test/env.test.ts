@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getRuntimeReadiness, parseEnv } from "../src/env.js";
+import { buildGitHubAppManifest, getRuntimeReadiness, parseEnv } from "../src/env.js";
 
 describe("runtime readiness", () => {
   it("reports missing production prerequisites", () => {
@@ -32,5 +32,24 @@ describe("runtime readiness", () => {
     const readiness = getRuntimeReadiness(env);
 
     expect(readiness.ready).toBe(true);
+  });
+
+  it("builds a GitHub App manifest from env defaults", () => {
+    const env = parseEnv({
+      PATCHPACT_BASE_URL: "https://patchpact.example.com",
+      PATCHPACT_GITHUB_APP_NAME: "PatchPact Production",
+      PATCHPACT_GITHUB_APP_DESCRIPTION: "Contract-first GitHub App",
+      PATCHPACT_GITHUB_APP_PUBLIC: "true",
+      PATCHPACT_GITHUB_WEBHOOK_SECRET: "secret",
+    });
+
+    const manifest = buildGitHubAppManifest(env);
+
+    expect(manifest.name).toBe("PatchPact Production");
+    expect(manifest.public).toBe(true);
+    expect(manifest.hook_attributes.url).toBe(
+      "https://patchpact.example.com/webhooks/github",
+    );
+    expect(manifest.default_events).toContain("pull_request_review");
   });
 });

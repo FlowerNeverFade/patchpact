@@ -19,6 +19,11 @@ export const patchPactEnvSchema = z.object({
   NODE_ENV: z.string().default("development"),
   PORT: z.coerce.number().default(3000),
   PATCHPACT_BASE_URL: z.string().url().default("http://localhost:3000"),
+  PATCHPACT_GITHUB_APP_NAME: z.string().default("PatchPact"),
+  PATCHPACT_GITHUB_APP_DESCRIPTION: z
+    .string()
+    .default("Contract-first GitHub App for open source maintainers."),
+  PATCHPACT_GITHUB_APP_PUBLIC: booleanFromString.default(false),
   PATCHPACT_INLINE_JOBS: booleanFromString.default(true),
   PATCHPACT_STORAGE: z.enum(["memory", "postgres"]).default("memory"),
   PATCHPACT_GITHUB_APP_ID: z.string().optional(),
@@ -51,6 +56,24 @@ export interface RuntimeReadinessCheck {
 export interface RuntimeReadiness {
   ready: boolean;
   checks: RuntimeReadinessCheck[];
+}
+
+export interface GitHubAppManifest {
+  name: string;
+  url: string;
+  description: string;
+  public: boolean;
+  setup_url: string;
+  callback_urls: string[];
+  hook_attributes: {
+    url: string;
+    active: boolean;
+  };
+  redirect_url?: string;
+  request_oauth_on_install: boolean;
+  setup_on_update: boolean;
+  default_permissions: Record<string, "read" | "write">;
+  default_events: string[];
 }
 
 export function parseEnv(source: NodeJS.ProcessEnv = process.env): PatchPactEnv {
@@ -122,6 +145,42 @@ export function formatRuntimeReadinessSummary(readiness: RuntimeReadiness): stri
   return issues.length
     ? `PatchPact runtime has missing prerequisites:\n- ${issues.join("\n- ")}`
     : "PatchPact runtime prerequisites are satisfied.";
+}
+
+export function buildGitHubAppManifest(env: PatchPactEnv): GitHubAppManifest {
+  const baseUrl = env.PATCHPACT_BASE_URL.replace(/\/$/, "");
+  const setupUrl = `${baseUrl}/setup`;
+  const webhookUrl = `${baseUrl}/webhooks/github`;
+
+  return {
+    name: env.PATCHPACT_GITHUB_APP_NAME,
+    url: baseUrl,
+    description: env.PATCHPACT_GITHUB_APP_DESCRIPTION,
+    public: env.PATCHPACT_GITHUB_APP_PUBLIC,
+    setup_url: setupUrl,
+    callback_urls: [setupUrl],
+    hook_attributes: {
+      url: webhookUrl,
+      active: true,
+    },
+    request_oauth_on_install: false,
+    setup_on_update: true,
+    default_permissions: {
+      issues: "write",
+      pull_requests: "write",
+      checks: "write",
+      contents: "read",
+      metadata: "read",
+    },
+    default_events: [
+      "installation",
+      "issues",
+      "issue_comment",
+      "pull_request",
+      "pull_request_review",
+      "push",
+    ],
+  };
 }
 
 function loadEnvFile(path: string): void {

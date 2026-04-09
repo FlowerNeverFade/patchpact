@@ -15,6 +15,9 @@ function createEnv(): PatchPactEnv {
     NODE_ENV: "test",
     PORT: 3000,
     PATCHPACT_BASE_URL: "http://localhost:3000",
+    PATCHPACT_GITHUB_APP_NAME: "PatchPact Test",
+    PATCHPACT_GITHUB_APP_DESCRIPTION: "Contract-first GitHub App for tests.",
+    PATCHPACT_GITHUB_APP_PUBLIC: false,
     PATCHPACT_INLINE_JOBS: true,
     PATCHPACT_STORAGE: "memory",
     PATCHPACT_GITHUB_WEBHOOK_SECRET: "test-secret",
@@ -67,13 +70,20 @@ describe("dashboard console", () => {
 
     const pageResponse = await request(app).get("/setup");
     const apiResponse = await request(app).get("/api/setup");
+    const manifestResponse = await request(app).get("/api/setup/github-app-manifest");
     const readyResponse = await request(app).get("/readyz");
 
     expect(pageResponse.status).toBe(200);
     expect(pageResponse.text).toContain("PatchPact Instance Readiness");
+    expect(pageResponse.text).toContain("GitHub App Manifest");
     expect(apiResponse.status).toBe(200);
     expect(apiResponse.body.webhookUrl).toBe("http://localhost:3000/webhooks/github");
     expect(apiResponse.body.requiredEvents).toContain("pull_request");
+    expect(manifestResponse.status).toBe(200);
+    expect(manifestResponse.body.name).toBe("PatchPact Test");
+    expect(manifestResponse.body.hook_attributes.url).toBe(
+      "http://localhost:3000/webhooks/github",
+    );
     expect(readyResponse.status).toBe(503);
     expect(readyResponse.body.ready).toBe(false);
   });

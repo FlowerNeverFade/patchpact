@@ -105,6 +105,12 @@ http://localhost:3000/setup
 
 9. If you are contributing, check the PR template and issue forms in `.github/`
 
+10. Generate a copyable GitHub App manifest from the current env:
+
+```bash
+npm run dev:cli -- print-github-app-manifest
+```
+
 ## Container workflow
 
 Build the image:
@@ -239,6 +245,12 @@ Search the stored repository knowledge:
 npm run dev:cli -- search-knowledge --owner acme --repo patchpact-demo --query tests
 ```
 
+Print a GitHub App manifest from the current env:
+
+```bash
+npm run dev:cli -- print-github-app-manifest
+```
+
 ## API surface
 
 - `GET /healthz`
@@ -248,6 +260,7 @@ npm run dev:cli -- search-knowledge --owner acme --repo patchpact-demo --query t
 - `GET /dashboard/jobs/:dedupeKey`
 - `GET /setup`
 - `GET /api/setup`
+- `GET /api/setup/github-app-manifest`
 - `GET /dashboard/:owner/:repo/contracts/:issueNumber`
 - `GET /dashboard/:owner/:repo/packets/:pullRequestNumber`
 - `GET /api/repositories`
@@ -277,6 +290,8 @@ Each connected repository now has a dedicated console page where maintainers can
 - inspect recent contracts, decision packets, and waivers in one place
 
 The dashboard now also includes job detail pages so operators can inspect stored webhook/task payloads and retry failed jobs from the browser.
+
+The setup guide now includes a copyable GitHub App manifest so you can mirror PatchPact's required permissions, events, webhook URL, and base settings without rebuilding them by hand.
 
 ## Security boundaries
 

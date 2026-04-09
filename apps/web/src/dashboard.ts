@@ -30,6 +30,10 @@ export interface SetupConsoleData {
   inlineJobs: boolean;
   storage: string;
   provider: string;
+  manifest: {
+    name: string;
+    json: string;
+  };
   checks: Array<{
     label: string;
     ready: boolean;
@@ -725,6 +729,10 @@ export function buildSetupConsoleData(input: {
   inlineJobs: boolean;
   storage: string;
   provider: string;
+  manifest: {
+    name: string;
+    json: string;
+  };
   envStatus: {
     githubAppId: boolean;
     githubPrivateKey: boolean;
@@ -743,6 +751,7 @@ export function buildSetupConsoleData(input: {
     inlineJobs: input.inlineJobs,
     storage: input.storage,
     provider: input.provider,
+    manifest: input.manifest,
     checks: [
       {
         label: "GitHub App ID",
@@ -852,6 +861,20 @@ export function renderSetupConsole(data: SetupConsoleData): string {
           <p>Webhook URL</p>
           <pre>${escapeHtml(data.webhookUrl)}</pre>
           <p class="small">Storage <code>${escapeHtml(data.storage)}</code> | Inline jobs <code>${String(data.inlineJobs)}</code> | Default provider <code>${escapeHtml(data.provider)}</code></p>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>GitHub App Manifest</h2>
+          <p class="small">
+            Use this manifest as a copyable starting point when creating the GitHub App manually or when scripting setup.
+          </p>
+          <p><strong>Suggested name:</strong> <code>${escapeHtml(data.manifest.name)}</code></p>
+          <pre class="mono">${escapeHtml(data.manifest.json)}</pre>
+          <div class="actions">
+            <a class="badge" href="/api/setup/github-app-manifest">Open Manifest JSON</a>
+          </div>
         </article>
       </section>
 

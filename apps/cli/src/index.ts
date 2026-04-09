@@ -12,6 +12,7 @@ import {
   type PatchPactJob,
 } from "@patchpact/core";
 import {
+  buildGitHubAppManifest,
   GitHubApiPlatform,
   InlineJobBus,
   MemoryGitHubPlatform,
@@ -174,6 +175,13 @@ async function replayWebhook(
 async function main() {
   const program = new Command();
   program.name("patchpact").description("PatchPact maintenance CLI");
+
+  program
+    .command("print-github-app-manifest")
+    .action(async () => {
+      const env = loadAndParseEnv(process.env);
+      console.log(JSON.stringify(buildGitHubAppManifest(env), null, 2));
+    });
 
   program
     .command("validate-config")
