@@ -1,5 +1,8 @@
 # PatchPact
 
+[![CI](https://github.com/FlowerNeverFade/patchpact/actions/workflows/ci.yml/badge.svg)](https://github.com/FlowerNeverFade/patchpact/actions/workflows/ci.yml)
+[![MIT License](https://img.shields.io/badge/license-MIT-0f766e.svg)](./LICENSE)
+
 PatchPact is a contract-first GitHub App for open source maintainers.
 
 Instead of waiting for a pull request to explain itself, PatchPact creates a reviewable `Contribution Contract` on the issue thread first, then generates a `Decision Packet` on the pull request to show scope fit, risk, missing tests, and suggested next action.
@@ -32,6 +35,13 @@ The point is not to automate maintainer judgment away. The point is to make that
 - Lightweight repository knowledge index with lexical retrieval backed by memory or Postgres
 - `Postgres + pgvector` bootstrap schema and `Redis` compose services
 - Local-friendly fallbacks: in-memory storage, inline jobs, and a deterministic mock model
+
+## Open source workflow
+
+- Read the contribution guide in [CONTRIBUTING.md](./CONTRIBUTING.md)
+- Review community expectations in [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- Report sensitive issues privately using [SECURITY.md](./SECURITY.md)
+- GitHub Actions runs `typecheck`, `test`, and `build` on pushes and pull requests
 
 ## Monorepo layout
 
@@ -92,6 +102,8 @@ http://localhost:3000/dashboard/<owner>/<repo>
 ```text
 http://localhost:3000/setup
 ```
+
+9. If you are contributing, check the PR template and issue forms in `.github/`
 
 ## Configuration
 
@@ -261,6 +273,16 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## Repository hygiene
+
+This repository includes:
+
+- CI workflow: `.github/workflows/ci.yml`
+- Dependabot updates: `.github/dependabot.yml`
+- Issue forms for bug reports and feature requests
+- Pull request template
+- `CODEOWNERS` for review routing
 
 ## Status
 

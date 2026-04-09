@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose a new capability or workflow improvement
+title: "[feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing an improvement. PatchPact works best when new features are framed in terms of maintainer pain and review cost.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What maintainer or contributor problem does this solve?
+      placeholder: Maintainers cannot quickly distinguish between deliberate waiver usage and missing issue links in large repos.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Add a dedicated waiver review panel with filters for open PRs and recent overrides.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: I considered using the existing dashboard list, but it becomes noisy in multi-repo setups.
+
+  - type: textarea
+    id: success
+    attributes:
+      label: What would success look like?
+      placeholder: Maintainers can spot recent waivers in under 30 seconds and understand whether follow-up is needed.

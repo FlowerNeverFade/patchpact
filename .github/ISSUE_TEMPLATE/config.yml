@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: PatchPact README
+    url: https://github.com/FlowerNeverFade/patchpact#readme
+    about: Check the README for setup, API, and dashboard guidance before opening a new issue.
