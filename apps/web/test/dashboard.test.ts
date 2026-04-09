@@ -81,6 +81,7 @@ describe("dashboard console", () => {
     expect(apiResponse.body.requiredEvents).toContain("pull_request");
     expect(manifestResponse.status).toBe(200);
     expect(manifestResponse.body.name).toBe("PatchPact Test");
+    expect(pageResponse.text).toContain("PatchPact Test");
     expect(manifestResponse.body.hook_attributes.url).toBe(
       "http://localhost:3000/webhooks/github",
     );
