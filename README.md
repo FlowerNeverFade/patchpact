@@ -267,6 +267,7 @@ npm run dev:cli -- print-github-app-manifest
 - `GET /setup`
 - `GET /setup/github-app/callback`
 - `GET /api/setup`
+- `GET /api/overview`
 - `GET /api/setup/github-app-manifest`
 - `GET /api/setup/github-app-manifest/exchange`
 - `GET /dashboard/:owner/:repo/contracts/:issueNumber`
@@ -302,6 +303,8 @@ The dashboard now also includes job detail pages so operators can inspect stored
 The setup guide now includes a copyable GitHub App manifest so you can mirror PatchPact's required permissions, events, webhook URL, and base settings without rebuilding them by hand.
 
 The manifest flow can now also exchange GitHub's callback code and turn the response into a ready-to-copy `.env.local` snippet for PatchPact.
+
+The setup experience now also includes onboarding summaries for known repositories, installation coverage, first knowledge sync gaps, and recent failed jobs.
 
 ## Security boundaries
 
