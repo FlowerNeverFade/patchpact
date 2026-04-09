@@ -1,0 +1,18 @@
+{
+  "action": "created",
+  "installation": { "id": 1001 },
+  "repository": {
+    "name": "patchpact-demo",
+    "owner": { "login": "acme" }
+  },
+  "issue": {
+    "number": 79,
+    "pull_request": {
+      "url": "https://example.test/pr/79"
+    }
+  },
+  "comment": {
+    "body": "/contract waive docs-only change",
+    "user": { "login": "maintainer" }
+  }
+}

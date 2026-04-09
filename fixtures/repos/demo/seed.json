@@ -1,0 +1,56 @@
+{
+  "owner": "acme",
+  "repo": "patchpact-demo",
+  "configText": "mode: advisory\nprovider: mock\nmodel: heuristic-v1\nrepo_rules:\n  - Keep changes scoped to one maintainer-facing problem.\n  - Require tests for user-visible behavior changes.\n",
+  "documents": [
+    {
+      "path": "README.md",
+      "content": "PatchPact demo repository.\n\nFocus on maintainable pull requests with explicit tests."
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "content": "Every behavior change should include tests or a clear explanation for why tests are skipped."
+    }
+  ],
+  "issues": [
+    {
+      "number": 42,
+      "title": "Add audit trail to moderation workflow",
+      "body": "We need a maintainable audit trail for moderation actions.\n\n- Log moderator actions with actor and timestamp\n- Keep implementation centered in src/moderation\n- Keep the scope to the moderation workflow\n- Do not refactor unrelated dashboards",
+      "author": "maintainer",
+      "labels": ["backend", "moderation"]
+    }
+  ],
+  "pullRequests": [
+    {
+      "number": 77,
+      "title": "Fixes #42 add moderation audit trail",
+      "body": "Closes #42\n\nAdds audit logging and tests for moderation actions.",
+      "author": "contributor",
+      "headSha": "abc123def456",
+      "baseRef": "main",
+      "labels": ["backend"],
+      "changedFiles": [
+        {
+          "path": "src/moderation/audit.ts",
+          "status": "added",
+          "additions": 80,
+          "deletions": 0
+        },
+        {
+          "path": "src/moderation/audit.test.ts",
+          "status": "added",
+          "additions": 55,
+          "deletions": 0
+        }
+      ]
+    }
+  ],
+  "recentMergedPullRequests": [
+    {
+      "number": 30,
+      "title": "Improve moderation queue ordering",
+      "summary": "Adjusted moderation ranking logic and tests."
+    }
+  ]
+}

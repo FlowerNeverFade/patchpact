@@ -1,0 +1,22 @@
+mode: advisory
+provider: mock
+model: heuristic-v1
+required_contract_sections:
+  - problemStatement
+  - scopeBoundaries
+  - impactedAreas
+  - acceptanceCriteria
+  - testExpectations
+  - nonGoals
+docs_globs:
+  - README.md
+  - CONTRIBUTING.md
+  - .github/ISSUE_TEMPLATE/*
+test_globs:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/test_*.py"
+repo_rules:
+  - Keep changes scoped to one maintainer-facing problem.
+  - Require a linked issue or a documented waiver before merge.
+  - Ask contributors to explain missing tests explicitly in the PR body.

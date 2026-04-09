@@ -1,0 +1,32 @@
+{
+  "name": "patchpact",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PatchPact is a contract-first GitHub App for open source maintainers.",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "dev:web": "npm run dev --workspace @patchpact/web",
+    "dev:worker": "npm run dev --workspace @patchpact/worker",
+    "dev:cli": "npm run dev --workspace @patchpact/cli --",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.5.2",
+    "@types/pg": "^8.15.5",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

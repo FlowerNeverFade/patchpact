@@ -1,0 +1,10 @@
+{
+  "ref": "refs/heads/main",
+  "installation": { "id": 1001 },
+  "repository": {
+    "name": "patchpact-demo",
+    "default_branch": "main",
+    "owner": { "login": "acme" }
+  },
+  "pusher": { "name": "maintainer" }
+}
