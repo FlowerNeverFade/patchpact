@@ -109,7 +109,7 @@ export class PatchPactEngine {
         requestedBy: input.requestedBy,
       };
     }
-    return this.deps.jobs.enqueue(job, input.dedupeKey);
+    return this.enqueueJob(job, input.dedupeKey);
   }
 
   async queueDecisionPacket(input: {
@@ -120,7 +120,7 @@ export class PatchPactEngine {
     requestedBy: string;
     dedupeKey: string;
   }): Promise<boolean> {
-    return this.deps.jobs.enqueue(
+    return this.enqueueJob(
       {
         type: "generate-decision-packet",
         owner: input.owner,
@@ -140,7 +140,7 @@ export class PatchPactEngine {
     requestedBy: string;
     dedupeKey: string;
   }): Promise<boolean> {
-    return this.deps.jobs.enqueue(
+    return this.enqueueJob(
       {
         type: "sync-repository-knowledge",
         owner: input.owner,
@@ -153,7 +153,27 @@ export class PatchPactEngine {
   }
 
   async requeueStoredJob(job: PatchPactJob, dedupeKey: string): Promise<boolean> {
-    return this.deps.jobs.enqueue(job, dedupeKey);
+    return this.enqueueJob(job, dedupeKey);
+  }
+
+  private async enqueueJob(job: PatchPactJob, dedupeKey: string): Promise<boolean> {
+    await this.deps.store.saveJobRun({
+      id: dedupeKey,
+      dedupeKey,
+      payload: job,
+      status: "queued",
+      type: job.type,
+    });
+
+    const accepted = await this.deps.jobs.enqueue(job, dedupeKey);
+    if (!accepted) {
+      await this.deps.store.updateJobRun(
+        dedupeKey,
+        "failed",
+        "The job was not accepted into the queue.",
+      );
+    }
+    return accepted;
   }
 
   async runJob(job: PatchPactJob, dedupeKey: string): Promise<void> {

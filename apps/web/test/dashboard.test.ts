@@ -399,7 +399,8 @@ describe("dashboard console", () => {
       .send({});
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toContain("notice=");
+    expect(response.headers.location).toContain("jobKey=");
+    expect(response.headers.location).toContain("jobCompleted=");
     const results = await store.searchKnowledgeChunks(
       "acme",
       "patchpact-demo",
@@ -407,6 +408,26 @@ describe("dashboard console", () => {
       10,
     );
     expect(results.length).toBeGreaterThan(0);
+  });
+
+  it("shows completed job feedback after a queued dashboard action redirects back", async () => {
+    const { store, app } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
+
+    const actionResponse = await request(app)
+      .post("/dashboard/acme/patchpact-demo/actions/sync-knowledge")
+      .type("form")
+      .send({});
+
+    const followResponse = await request(app).get(actionResponse.headers.location);
+
+    expect(followResponse.status).toBe(200);
+    expect(followResponse.text).toContain("Knowledge sync completed for acme/patchpact-demo.");
   });
 
   it("triggers manual contract refresh and packet regeneration from dashboard actions", async () => {

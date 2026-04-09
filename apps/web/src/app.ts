@@ -90,6 +90,57 @@ function appendNoticeToPath(target: string, notice: NoticeData): string {
   return `${url.pathname}${url.search}`;
 }
 
+function appendJobNoticeToPath(
+  target: string,
+  input: {
+    jobKey: string;
+    queuedText: string;
+    processingText: string;
+    completedText: string;
+    failedText: string;
+  },
+): string {
+  const base = target.startsWith("/") ? target : `/${target}`;
+  const url = new URL(base, "http://patchpact.local");
+  url.searchParams.set("jobKey", input.jobKey);
+  url.searchParams.set("jobQueued", input.queuedText);
+  url.searchParams.set("jobProcessing", input.processingText);
+  url.searchParams.set("jobCompleted", input.completedText);
+  url.searchParams.set("jobFailed", input.failedText);
+  return `${url.pathname}${url.search}`;
+}
+
+async function resolveNotice(
+  store: ArtifactStore,
+  query: Record<string, unknown>,
+): Promise<NoticeData | undefined> {
+  const jobKey = String(query.jobKey ?? "").trim();
+  if (!jobKey) {
+    return getNoticeFromQuery(query);
+  }
+
+  const job = await store.getJobRun(jobKey);
+  const queuedText = String(query.jobQueued ?? "").trim();
+  const processingText = String(query.jobProcessing ?? queuedText).trim();
+  const completedText = String(query.jobCompleted ?? queuedText).trim();
+  const failedText = String(query.jobFailed ?? queuedText).trim();
+
+  if (!job) {
+    return queuedText ? { kind: "info", text: queuedText } : undefined;
+  }
+
+  if (job.status === "completed") {
+    return { kind: "success", text: completedText || "PatchPact action completed." };
+  }
+  if (job.status === "failed") {
+    return { kind: "warning", text: failedText || "PatchPact action failed." };
+  }
+  if (job.status === "processing") {
+    return { kind: "info", text: processingText || "PatchPact action is processing." };
+  }
+  return { kind: "info", text: queuedText || "PatchPact action has been queued." };
+}
+
 async function buildSetupData(env: PatchPactEnv, store: ArtifactStore) {
   return buildSetupDataWithFilters(env, store, {});
 }
@@ -201,7 +252,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           await buildSetupDataWithFilters(options.env, options.store, {
             query,
             status,
-          }, getNoticeFromQuery(_request.query)),
+          }, await resolveNotice(options.store, _request.query)),
         ),
       );
   });
@@ -233,7 +284,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           type: job.type,
           error: job.error,
         })),
-        notice: getNoticeFromQuery(request.query),
+        notice: await resolveNotice(options.store, request.query),
       }),
     );
   });
@@ -361,7 +412,9 @@ export function createWebApp(options: CreateWebAppOptions) {
       );
       return;
     }
-    response.type("html").send(renderJobDetailPage(job, getNoticeFromQuery(request.query)));
+    response.type("html").send(
+      renderJobDetailPage(job, await resolveNotice(options.store, request.query)),
+    );
   });
 
   app.get("/dashboard/:owner/:repo", async (request, response) => {
@@ -398,7 +451,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           knowledgeQuery,
           knowledgeQuery ? 10 : 6,
         ),
-        notice: getNoticeFromQuery(request.query),
+        notice: await resolveNotice(options.store, request.query),
         onboarding: checklist
           ? {
               status: checklist.repository.status,
@@ -435,7 +488,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           repo.repo,
           Number(request.params.issueNumber),
         ),
-        getNoticeFromQuery(request.query),
+        await resolveNotice(options.store, request.query),
       ),
     );
   });
@@ -463,7 +516,7 @@ export function createWebApp(options: CreateWebAppOptions) {
           repo.repo,
           Number(request.params.pullRequestNumber),
         ),
-        getNoticeFromQuery(request.query),
+        await resolveNotice(options.store, request.query),
       ),
     );
   });
@@ -702,20 +755,27 @@ export function createWebApp(options: CreateWebAppOptions) {
       );
       return;
     }
+    const dedupeKey = `dashboard-sync:${request.params.owner}/${request.params.repo}:${Date.now()}`;
     await options.engine.queueKnowledgeSync({
       owner: request.params.owner,
       repo: request.params.repo,
       installationId: repo?.installationId,
       requestedBy: "dashboard",
-      dedupeKey: `dashboard-sync:${request.params.owner}/${request.params.repo}:${Date.now()}`,
+      dedupeKey,
     });
     response.redirect(
       303,
-      appendNoticeToPath(
-        `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+      appendJobNoticeToPath(
+        String(
+          request.body.redirectTo ||
+            `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
+        ),
         {
-          kind: "success",
-          text: `Queued knowledge sync for ${request.params.owner}/${request.params.repo}.`,
+          jobKey: dedupeKey,
+          queuedText: `Queued knowledge sync for ${request.params.owner}/${request.params.repo}.`,
+          processingText: `Knowledge sync is processing for ${request.params.owner}/${request.params.repo}.`,
+          completedText: `Knowledge sync completed for ${request.params.owner}/${request.params.repo}.`,
+          failedText: `Knowledge sync failed for ${request.params.owner}/${request.params.repo}.`,
         },
       ),
     );
@@ -743,6 +803,7 @@ export function createWebApp(options: CreateWebAppOptions) {
       request.params.owner,
       request.params.repo,
     );
+    const dedupeKey = `dashboard-refresh-contract:${request.params.owner}/${request.params.repo}:${issueNumber}:${Date.now()}`;
     await options.engine.queueCommand({
       owner: request.params.owner,
       repo: request.params.repo,
@@ -750,18 +811,21 @@ export function createWebApp(options: CreateWebAppOptions) {
       installationId: repo?.installationId,
       requestedBy: "dashboard",
       command: { kind: "contract", action: "refresh" },
-      dedupeKey: `dashboard-refresh-contract:${request.params.owner}/${request.params.repo}:${issueNumber}:${Date.now()}`,
+      dedupeKey,
     });
     response.redirect(
       303,
-      appendNoticeToPath(
+      appendJobNoticeToPath(
         String(
           request.body.redirectTo ||
             `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
         ),
         {
-          kind: "success",
-          text: `Queued contract refresh for issue #${issueNumber}.`,
+          jobKey: dedupeKey,
+          queuedText: `Queued contract refresh for issue #${issueNumber}.`,
+          processingText: `Contract refresh is processing for issue #${issueNumber}.`,
+          completedText: `Contract refresh completed for issue #${issueNumber}.`,
+          failedText: `Contract refresh failed for issue #${issueNumber}.`,
         },
       ),
     );
@@ -789,24 +853,28 @@ export function createWebApp(options: CreateWebAppOptions) {
       request.params.owner,
       request.params.repo,
     );
+    const dedupeKey = `dashboard-regenerate-packet:${request.params.owner}/${request.params.repo}:${pullRequestNumber}:${Date.now()}`;
     await options.engine.queueDecisionPacket({
       owner: request.params.owner,
       repo: request.params.repo,
       pullRequestNumber,
       installationId: repo?.installationId,
       requestedBy: "dashboard",
-      dedupeKey: `dashboard-regenerate-packet:${request.params.owner}/${request.params.repo}:${pullRequestNumber}:${Date.now()}`,
+      dedupeKey,
     });
     response.redirect(
       303,
-      appendNoticeToPath(
+      appendJobNoticeToPath(
         String(
           request.body.redirectTo ||
             `/dashboard/${encodeURIComponent(request.params.owner)}/${encodeURIComponent(request.params.repo)}`,
         ),
         {
-          kind: "success",
-          text: `Queued decision packet regeneration for PR #${pullRequestNumber}.`,
+          jobKey: dedupeKey,
+          queuedText: `Queued decision packet regeneration for PR #${pullRequestNumber}.`,
+          processingText: `Decision packet regeneration is processing for PR #${pullRequestNumber}.`,
+          completedText: `Decision packet regeneration completed for PR #${pullRequestNumber}.`,
+          failedText: `Decision packet regeneration failed for PR #${pullRequestNumber}.`,
         },
       ),
     );
@@ -824,17 +892,21 @@ export function createWebApp(options: CreateWebAppOptions) {
       );
       return;
     }
+    const retryKey = `dashboard-retry:${job.type}:${Date.now()}`;
     await options.engine.requeueStoredJob(
       job.payload,
-      `dashboard-retry:${job.type}:${Date.now()}`,
+      retryKey,
     );
     response.redirect(
       303,
-      appendNoticeToPath(
+      appendJobNoticeToPath(
         `/dashboard/jobs/${encodeURIComponent(request.params.dedupeKey)}`,
         {
-          kind: "success",
-          text: `Queued retry for ${job.type}.`,
+          jobKey: retryKey,
+          queuedText: `Queued retry for ${job.type}.`,
+          processingText: `${job.type} retry is processing.`,
+          completedText: `${job.type} retry completed.`,
+          failedText: `${job.type} retry failed.`,
         },
       ),
     );
