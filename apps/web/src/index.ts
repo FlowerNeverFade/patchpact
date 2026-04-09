@@ -1,16 +1,19 @@
 import { PatchPactEngine, type PatchPactJob } from "@patchpact/core";
 import {
   BullMQJobBus,
+  formatRuntimeReadinessSummary,
   GitHubApiPlatform,
   InlineJobBus,
   createArtifactStore,
   createModelProvider,
-  parseEnv,
+  getRuntimeReadiness,
+  loadAndParseEnv,
 } from "@patchpact/adapters";
 import { createWebApp } from "./app.js";
 
 async function main() {
-  const env = parseEnv(process.env);
+  const env = loadAndParseEnv(process.env);
+  const readiness = getRuntimeReadiness(env);
   const store = createArtifactStore(env);
   const github = new GitHubApiPlatform({
     appId: env.PATCHPACT_GITHUB_APP_ID,
@@ -48,6 +51,7 @@ async function main() {
 
   app.listen(env.PORT, () => {
     console.log(`PatchPact web listening on ${env.PATCHPACT_BASE_URL}`);
+    console.log(formatRuntimeReadinessSummary(readiness));
   });
 }
 

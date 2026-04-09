@@ -20,6 +20,42 @@ services:
     volumes:
       - redis-data:/data
 
+  patchpact-web:
+    profiles: ["app"]
+    build:
+      context: .
+    environment:
+      PATCHPACT_APP: web
+      PORT: 3000
+      PATCHPACT_BASE_URL: http://localhost:3000
+      PATCHPACT_STORAGE: postgres
+      PATCHPACT_INLINE_JOBS: "false"
+      PATCHPACT_DEFAULT_PROVIDER: mock
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/patchpact
+      REDIS_URL: redis://redis:6379
+      PATCHPACT_GITHUB_WEBHOOK_SECRET: development-secret
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "3000:3000"
+
+  patchpact-worker:
+    profiles: ["app"]
+    build:
+      context: .
+    environment:
+      PATCHPACT_APP: worker
+      PATCHPACT_STORAGE: postgres
+      PATCHPACT_INLINE_JOBS: "false"
+      PATCHPACT_DEFAULT_PROVIDER: mock
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/patchpact
+      REDIS_URL: redis://redis:6379
+      PATCHPACT_GITHUB_WEBHOOK_SECRET: development-secret
+    depends_on:
+      - postgres
+      - redis
+
 volumes:
   postgres-data:
   redis-data:

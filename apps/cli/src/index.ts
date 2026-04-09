@@ -17,6 +17,7 @@ import {
   MemoryGitHubPlatform,
   MockModelProvider,
   createArtifactStore,
+  loadAndParseEnv,
   parseEnv,
   type SeedRepository,
 } from "@patchpact/adapters";
@@ -252,7 +253,7 @@ async function main() {
     .requiredOption("--query <query>", "Search query")
     .option("--limit <number>", "Max results", "6")
     .action(async (options) => {
-      const env = parseEnv(process.env);
+      const env = loadAndParseEnv(process.env);
       const store = createArtifactStore(env);
       const results = await store.searchKnowledgeChunks(
         options.owner,
@@ -269,7 +270,7 @@ async function main() {
     .requiredOption("--file <path>", "Path to a raw GitHub webhook payload JSON file")
     .option("--delivery <id>", "Synthetic delivery id", `cli-${Date.now()}`)
     .action(async (options) => {
-      const env = parseEnv(process.env);
+      const env = loadAndParseEnv(process.env);
       const store = createArtifactStore({ ...env, PATCHPACT_INLINE_JOBS: true });
       const github = new GitHubApiPlatform({
         appId: env.PATCHPACT_GITHUB_APP_ID,
@@ -303,7 +304,7 @@ async function main() {
     .requiredOption("--repo <repo>", "Repository name")
     .option("--installation <id>", "GitHub installation id")
     .action(async (options) => {
-      const env = parseEnv(process.env);
+      const env = loadAndParseEnv(process.env);
       const store = createArtifactStore(env);
       const github = new GitHubApiPlatform({
         appId: env.PATCHPACT_GITHUB_APP_ID,

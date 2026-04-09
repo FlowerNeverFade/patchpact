@@ -67,12 +67,15 @@ describe("dashboard console", () => {
 
     const pageResponse = await request(app).get("/setup");
     const apiResponse = await request(app).get("/api/setup");
+    const readyResponse = await request(app).get("/readyz");
 
     expect(pageResponse.status).toBe(200);
     expect(pageResponse.text).toContain("PatchPact Instance Readiness");
     expect(apiResponse.status).toBe(200);
     expect(apiResponse.body.webhookUrl).toBe("http://localhost:3000/webhooks/github");
     expect(apiResponse.body.requiredEvents).toContain("pull_request");
+    expect(readyResponse.status).toBe(503);
+    expect(readyResponse.body.ready).toBe(false);
   });
 
   it("renders a repository console page", async () => {

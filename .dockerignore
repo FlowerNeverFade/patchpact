@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+dist
+coverage
+tmp
+.env
+.env.local
+*.log
+apps/*/dist
+packages/*/dist
+apps/*/tsconfig.tsbuildinfo
+packages/*/tsconfig.tsbuildinfo

@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { z } from "zod";
 
 const booleanFromString = z
@@ -40,6 +42,129 @@ export const patchPactEnvSchema = z.object({
 
 export type PatchPactEnv = z.infer<typeof patchPactEnvSchema>;
 
+export interface RuntimeReadinessCheck {
+  label: string;
+  ready: boolean;
+  detail: string;
+}
+
+export interface RuntimeReadiness {
+  ready: boolean;
+  checks: RuntimeReadinessCheck[];
+}
+
 export function parseEnv(source: NodeJS.ProcessEnv = process.env): PatchPactEnv {
   return patchPactEnvSchema.parse(source);
+}
+
+export function loadEnvFiles(baseDir = process.env.INIT_CWD || process.cwd()): void {
+  for (const filename of [".env", ".env.local"]) {
+    loadEnvFile(resolve(baseDir, filename));
+  }
+}
+
+export function loadAndParseEnv(source: NodeJS.ProcessEnv = process.env): PatchPactEnv {
+  loadEnvFiles();
+  return parseEnv(source);
+}
+
+export function getRuntimeReadiness(env: PatchPactEnv): RuntimeReadiness {
+  const checks: RuntimeReadinessCheck[] = [
+    {
+      label: "GitHub App credentials",
+      ready: Boolean(env.PATCHPACT_GITHUB_APP_ID && env.PATCHPACT_GITHUB_PRIVATE_KEY),
+      detail: "Required for posting issue comments and check runs as a GitHub App.",
+    },
+    {
+      label: "Webhook secret",
+      ready: Boolean(env.PATCHPACT_GITHUB_WEBHOOK_SECRET),
+      detail: "Required for verifying incoming GitHub webhook signatures.",
+    },
+    {
+      label: "Storage backend",
+      ready: env.PATCHPACT_STORAGE === "memory" || Boolean(env.DATABASE_URL),
+      detail:
+        env.PATCHPACT_STORAGE === "memory"
+          ? "Memory mode is enabled."
+          : "Postgres mode requires DATABASE_URL.",
+    },
+    {
+      label: "Queue backend",
+      ready: env.PATCHPACT_INLINE_JOBS || Boolean(env.REDIS_URL),
+      detail:
+        env.PATCHPACT_INLINE_JOBS
+          ? "Inline jobs are enabled."
+          : "BullMQ mode requires REDIS_URL.",
+    },
+    {
+      label: "Model provider",
+      ready:
+        env.PATCHPACT_DEFAULT_PROVIDER === "mock" ||
+        env.PATCHPACT_DEFAULT_PROVIDER === "ollama" ||
+        (env.PATCHPACT_DEFAULT_PROVIDER === "openai-compatible" &&
+          Boolean(env.PATCHPACT_OPENAI_API_KEY)) ||
+        (env.PATCHPACT_DEFAULT_PROVIDER === "anthropic" &&
+          Boolean(env.PATCHPACT_ANTHROPIC_API_KEY)),
+      detail: "Mock and Ollama can run without cloud keys. Cloud providers need their matching API key.",
+    },
+  ];
+
+  return {
+    ready: checks.every((check) => check.ready),
+    checks,
+  };
+}
+
+export function formatRuntimeReadinessSummary(readiness: RuntimeReadiness): string {
+  const issues = readiness.checks
+    .filter((check) => !check.ready)
+    .map((check) => `${check.label}: ${check.detail}`);
+  return issues.length
+    ? `PatchPact runtime has missing prerequisites:\n- ${issues.join("\n- ")}`
+    : "PatchPact runtime prerequisites are satisfied.";
+}
+
+function loadEnvFile(path: string): void {
+  if (!existsSync(path)) {
+    return;
+  }
+
+  const content = readFileSync(path, "utf8");
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const normalized = line.startsWith("export ") ? line.slice("export ".length) : line;
+    const equalsIndex = normalized.indexOf("=");
+    if (equalsIndex <= 0) {
+      continue;
+    }
+
+    const key = normalized.slice(0, equalsIndex).trim();
+    if (!key || process.env[key] !== undefined) {
+      continue;
+    }
+
+    let value = normalized.slice(equalsIndex + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      const quote = value[0];
+      value = value.slice(1, -1);
+      if (quote === '"') {
+        value = value
+          .replace(/\\n/g, "\n")
+          .replace(/\\r/g, "\r")
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, "\\");
+      }
+    } else {
+      value = value.replace(/\s+#.*$/, "").trim();
+    }
+
+    process.env[key] = value;
+  }
 }

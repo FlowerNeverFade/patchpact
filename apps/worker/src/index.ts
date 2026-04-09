@@ -1,15 +1,18 @@
 import { PatchPactEngine, type PatchPactJob } from "@patchpact/core";
 import {
+  formatRuntimeReadinessSummary,
   GitHubApiPlatform,
   InlineJobBus,
   createArtifactStore,
   createModelProvider,
-  parseEnv,
+  getRuntimeReadiness,
+  loadAndParseEnv,
   startBullWorker,
 } from "@patchpact/adapters";
 
 async function main() {
-  const env = parseEnv(process.env);
+  const env = loadAndParseEnv(process.env);
+  const readiness = getRuntimeReadiness(env);
   if (env.PATCHPACT_INLINE_JOBS) {
     console.log(
       "PatchPact worker is idle because PATCHPACT_INLINE_JOBS=true. Set it to false with REDIS_URL to use BullMQ.",
@@ -45,6 +48,7 @@ async function main() {
   });
 
   console.log("PatchPact worker is listening for jobs.");
+  console.log(formatRuntimeReadinessSummary(readiness));
 }
 
 main().catch((error) => {

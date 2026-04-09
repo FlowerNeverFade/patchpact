@@ -11,7 +11,7 @@ import {
   type RepositoryRecord,
   verifyGitHubSignature,
 } from "@patchpact/core";
-import { type PatchPactEnv } from "@patchpact/adapters";
+import { getRuntimeReadiness, type PatchPactEnv } from "@patchpact/adapters";
 import {
   buildSetupConsoleData,
   renderContractDetailPage,
@@ -83,6 +83,11 @@ export function createWebApp(options: CreateWebAppOptions) {
       storage: options.env.PATCHPACT_STORAGE,
       inlineJobs: options.env.PATCHPACT_INLINE_JOBS,
     });
+  });
+
+  app.get("/readyz", async (_request, response) => {
+    const readiness = getRuntimeReadiness(options.env);
+    response.status(readiness.ready ? 200 : 503).json(readiness);
   });
 
   app.get("/dashboard", async (_request, response) => {

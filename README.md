@@ -105,6 +105,32 @@ http://localhost:3000/setup
 
 9. If you are contributing, check the PR template and issue forms in `.github/`
 
+## Container workflow
+
+Build the image:
+
+```bash
+docker build -t patchpact:local .
+```
+
+Run the web app from the image:
+
+```bash
+docker run --rm -p 3000:3000 -e PATCHPACT_APP=web --env-file .env patchpact:local
+```
+
+Run the worker from the same image:
+
+```bash
+docker run --rm -e PATCHPACT_APP=worker --env-file .env patchpact:local
+```
+
+Or start the app stack with Compose:
+
+```bash
+docker compose --profile app up --build
+```
+
 ## Configuration
 
 PatchPact reads repository policy from `.patchpact.yml`.
@@ -216,6 +242,7 @@ npm run dev:cli -- search-knowledge --owner acme --repo patchpact-demo --query t
 ## API surface
 
 - `GET /healthz`
+- `GET /readyz`
 - `GET /dashboard`
 - `GET /dashboard/:owner/:repo`
 - `GET /dashboard/jobs/:dedupeKey`
@@ -273,6 +300,15 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+## Runtime readiness
+
+PatchPact now exposes two health-style endpoints:
+
+- `/healthz`: lightweight liveness information
+- `/readyz`: readiness checks for GitHub App credentials, queue backend, storage backend, and model provider configuration
+
+The web and worker entrypoints also auto-load `.env` and `.env.local` when present before parsing runtime configuration.
 
 ## Repository hygiene
 
