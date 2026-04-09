@@ -39,6 +39,18 @@ export interface SetupConsoleData {
     repositoryCount: number;
     installedRepositoryCount: number;
     activeRepositoryCount: number;
+    repositories: Array<{
+      owner: string;
+      repo: string;
+      status: string;
+      knowledgeChunkCount: number;
+      contractCount: number;
+      packetCount: number;
+      waiverCount: number;
+      summary: string;
+      recommendedActionLabel: string;
+      recommendedActionHref: string;
+    }>;
     repositoriesNeedingInstallation: Array<{
       owner: string;
       repo: string;
@@ -767,6 +779,18 @@ export function buildSetupConsoleData(input: {
     repositoryCount: number;
     installedRepositoryCount: number;
     activeRepositoryCount: number;
+    repositories: Array<{
+      owner: string;
+      repo: string;
+      status: string;
+      knowledgeChunkCount: number;
+      contractCount: number;
+      packetCount: number;
+      waiverCount: number;
+      summary: string;
+      recommendedActionLabel: string;
+      recommendedActionHref: string;
+    }>;
     repositoriesNeedingInstallation: Array<{
       owner: string;
       repo: string;
@@ -972,6 +996,29 @@ export function renderSetupConsole(data: SetupConsoleData): string {
                     )
                     .join("")
                 : "<li>No recent failed jobs.</li>"
+            }
+          </ul>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Repository Action Plan</h2>
+          <ul class="card-list">
+            ${
+              data.onboarding.repositories.length
+                ? data.onboarding.repositories
+                    .map(
+                      (repo) => `<li>
+                        <strong>${escapeHtml(repo.owner)}/${escapeHtml(repo.repo)}</strong>
+                        <span class="pill${repo.status === "active" ? "" : " pill-warn"}">${escapeHtml(repo.status)}</span><br />
+                        <span class="small">${escapeHtml(repo.summary)}</span><br />
+                        <span class="small">Knowledge ${repo.knowledgeChunkCount} | Contracts ${repo.contractCount} | Packets ${repo.packetCount} | Waivers ${repo.waiverCount}</span><br />
+                        <a class="badge" href="${escapeHtml(repo.recommendedActionHref)}">${escapeHtml(repo.recommendedActionLabel)}</a>
+                      </li>`,
+                    )
+                    .join("")
+                : "<li>No repositories are connected yet.</li>"
             }
           </ul>
         </article>

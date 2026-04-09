@@ -9,6 +9,9 @@ export interface RepositoryOnboardingStatus {
   contractCount: number;
   packetCount: number;
   waiverCount: number;
+  summary: string;
+  recommendedActionLabel: string;
+  recommendedActionHref: string;
 }
 
 export interface InstanceOverview {
@@ -40,6 +43,32 @@ export async function buildRepositoryOnboardingStatus(
         ? "active"
         : "configured";
 
+  const repositoryConsoleHref = `/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}`;
+  const recommendedAction =
+    status === "needs-installation"
+      ? {
+          label: "Open setup guide",
+          href: "/setup",
+          summary: "PatchPact knows about this repository but has not recorded a GitHub App installation yet.",
+        }
+      : status === "needs-knowledge-sync"
+        ? {
+            label: "Sync knowledge",
+            href: `${repositoryConsoleHref}?q=`,
+            summary: "The repository is installed but PatchPact has not built its first document knowledge index yet.",
+          }
+        : status === "active"
+          ? {
+              label: "Open repository console",
+              href: repositoryConsoleHref,
+              summary: `PatchPact has generated ${contracts.length} contracts and ${packets.length} decision packets for this repository.`,
+            }
+          : {
+              label: "Review repository console",
+              href: repositoryConsoleHref,
+              summary: "The repository is installed and indexed, but PatchPact has not generated maintainer artifacts yet.",
+            };
+
   return {
     owner: repo.owner,
     repo: repo.repo,
@@ -49,6 +78,9 @@ export async function buildRepositoryOnboardingStatus(
     contractCount: contracts.length,
     packetCount: packets.length,
     waiverCount: waivers.length,
+    summary: recommendedAction.summary,
+    recommendedActionLabel: recommendedAction.label,
+    recommendedActionHref: recommendedAction.href,
   };
 }
 
@@ -63,6 +95,16 @@ export async function buildInstanceOverview(
     (job) => job.status === "failed",
   );
 
+  const orderedStatuses = [...statuses].sort((left, right) => {
+    const order = {
+      "needs-installation": 0,
+      "needs-knowledge-sync": 1,
+      configured: 2,
+      active: 3,
+    } as const;
+    return order[left.status] - order[right.status] || `${left.owner}/${left.repo}`.localeCompare(`${right.owner}/${right.repo}`);
+  });
+
   return {
     repositoryCount: statuses.length,
     installedRepositoryCount: statuses.filter((repo) => Boolean(repo.installationId)).length,
@@ -73,7 +115,7 @@ export async function buildInstanceOverview(
     repositoriesNeedingKnowledgeSync: statuses.filter(
       (repo) => repo.status === "needs-knowledge-sync",
     ),
-    repositories: statuses,
+    repositories: orderedStatuses,
     recentFailedJobs,
   };
 }

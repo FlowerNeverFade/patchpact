@@ -88,6 +88,7 @@ describe("dashboard console", () => {
     expect(pageResponse.text).toContain("PatchPact Instance Readiness");
     expect(pageResponse.text).toContain("GitHub App Manifest");
     expect(pageResponse.text).toContain("Onboarding Summary");
+    expect(pageResponse.text).toContain("Repository Action Plan");
     expect(apiResponse.status).toBe(200);
     expect(apiResponse.body.webhookUrl).toBe("http://localhost:3000/webhooks/github");
     expect(apiResponse.body.requiredEvents).toContain("pull_request");
@@ -103,6 +104,8 @@ describe("dashboard console", () => {
     expect(overviewResponse.status).toBe(200);
     expect(overviewResponse.body.repositoryCount).toBe(1);
     expect(overviewResponse.body.installedRepositoryCount).toBe(1);
+    expect(overviewResponse.body.repositories[0].recommendedActionLabel).toBeDefined();
+    expect(overviewResponse.body.repositories[0].summary).toContain("installed");
     expect(readyResponse.status).toBe(503);
     expect(readyResponse.body.ready).toBe(false);
   });

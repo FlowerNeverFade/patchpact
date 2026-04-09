@@ -306,6 +306,8 @@ The manifest flow can now also exchange GitHub's callback code and turn the resp
 
 The setup experience now also includes onboarding summaries for known repositories, installation coverage, first knowledge sync gaps, and recent failed jobs.
 
+It now also includes a repository-by-repository action plan so operators can see the next recommended step for each connected repo at a glance.
+
 ## Security boundaries
 
 - Issue, pull request, comment, and repository document content is treated as untrusted

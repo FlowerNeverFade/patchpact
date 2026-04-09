@@ -80,6 +80,18 @@ async function buildSetupData(env: PatchPactEnv, store: ArtifactStore) {
       repositoryCount: overview.repositoryCount,
       installedRepositoryCount: overview.installedRepositoryCount,
       activeRepositoryCount: overview.activeRepositoryCount,
+      repositories: overview.repositories.map((repo) => ({
+        owner: repo.owner,
+        repo: repo.repo,
+        status: repo.status,
+        knowledgeChunkCount: repo.knowledgeChunkCount,
+        contractCount: repo.contractCount,
+        packetCount: repo.packetCount,
+        waiverCount: repo.waiverCount,
+        summary: repo.summary,
+        recommendedActionLabel: repo.recommendedActionLabel,
+        recommendedActionHref: repo.recommendedActionHref,
+      })),
       repositoriesNeedingInstallation: overview.repositoriesNeedingInstallation.map((repo) => ({
         owner: repo.owner,
         repo: repo.repo,
