@@ -288,6 +288,7 @@ npm run dev:cli -- print-github-app-manifest
 - `GET /dashboard/:owner/:repo/packets/:pullRequestNumber`
 - `GET /api/repositories`
 - `GET /api/repositories/:owner/:repo`
+- `GET /api/repositories/:owner/:repo/onboarding`
 - `GET /api/repositories/:owner/:repo/contracts/:issueNumber`
 - `GET /api/repositories/:owner/:repo/packets/:pullRequestNumber`
 - `GET /api/repositories/:owner/:repo/knowledge?q=tests`
@@ -325,6 +326,8 @@ It now also includes a repository-by-repository action plan so operators can see
 There is now also a dedicated onboarding checklist page per repository, so setup can drill from instance-level summary down to concrete repository-specific next steps.
 
 Setup and overview now also support filtering by repository status and free-text query so operators can narrow the action plan when many repositories are connected.
+
+Repository console pages now surface the same onboarding state directly, so maintainers can see the current repo's next recommended actions without leaving the console.
 
 ## Security boundaries
 

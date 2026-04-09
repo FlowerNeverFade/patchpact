@@ -326,6 +326,11 @@ export function createWebApp(options: CreateWebAppOptions) {
       return;
     }
     const knowledgeQuery = String(request.query.q ?? "").trim();
+    const checklist = await buildRepositoryOnboardingChecklist(
+      options.store,
+      repo.owner,
+      repo.repo,
+    );
     response.type("html").send(
       renderRepositoryConsole({
         repo,
@@ -339,6 +344,15 @@ export function createWebApp(options: CreateWebAppOptions) {
           knowledgeQuery,
           knowledgeQuery ? 10 : 6,
         ),
+        onboarding: checklist
+          ? {
+              status: checklist.repository.status,
+              summary: checklist.repository.summary,
+              latestContractIssueNumber: checklist.latestContractIssueNumber,
+              latestPullRequestNumber: checklist.latestPullRequestNumber,
+              checklistItems: checklist.checklistItems,
+            }
+          : undefined,
       }),
     );
   });
@@ -443,12 +457,31 @@ export function createWebApp(options: CreateWebAppOptions) {
       response.status(404).json({ error: "Repository not found" });
       return;
     }
+    const checklist = await buildRepositoryOnboardingChecklist(
+      options.store,
+      repo.owner,
+      repo.repo,
+    );
     response.json({
       repository: repo,
       contracts: await options.store.listContracts(repo.owner, repo.repo),
       packets: await options.store.listDecisionPackets(repo.owner, repo.repo),
       waivers: await options.store.listWaivers(repo.owner, repo.repo),
+      onboarding: checklist,
     });
+  });
+
+  app.get("/api/repositories/:owner/:repo/onboarding", async (request, response) => {
+    const checklist = await buildRepositoryOnboardingChecklist(
+      options.store,
+      request.params.owner,
+      request.params.repo,
+    );
+    if (!checklist) {
+      response.status(404).json({ error: "Repository not found" });
+      return;
+    }
+    response.json(checklist);
   });
 
   app.get("/api/repositories/:owner/:repo/contracts/:issueNumber", async (request, response) => {

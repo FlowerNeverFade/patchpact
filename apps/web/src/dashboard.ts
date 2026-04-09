@@ -22,6 +22,19 @@ interface RepositoryConsoleData {
   waivers: WaiverRecord[];
   knowledgeResults: RepositoryKnowledgeChunk[];
   knowledgeQuery: string;
+  onboarding?: {
+    status: string;
+    summary: string;
+    latestContractIssueNumber?: number;
+    latestPullRequestNumber?: number;
+    checklistItems: Array<{
+      label: string;
+      state: "complete" | "attention" | "optional";
+      detail: string;
+      actionLabel?: string;
+      actionHref?: string;
+    }>;
+  };
 }
 
 export interface SetupConsoleData {
@@ -547,7 +560,7 @@ export async function renderDashboard(store: ArtifactStore): Promise<string> {
 }
 
 export function renderRepositoryConsole(data: RepositoryConsoleData): string {
-  const { repo, contracts, packets, waivers, knowledgeQuery, knowledgeResults } = data;
+  const { repo, contracts, packets, waivers, knowledgeQuery, knowledgeResults, onboarding } = data;
   return baseStyles(
     `${repo.owner}/${repo.repo} - PatchPact`,
     `
@@ -567,8 +580,55 @@ export function renderRepositoryConsole(data: RepositoryConsoleData): string {
           <span class="badge">Contracts ${contracts.length}</span>
           <span class="badge">Packets ${packets.length}</span>
           <span class="badge">Waivers ${waivers.length}</span>
+          ${
+            onboarding
+              ? `<span class="badge">Onboarding ${escapeHtml(onboarding.status)}</span>`
+              : ""
+          }
         </div>
       </section>
+
+      ${
+        onboarding
+          ? `<section class="grid">
+              <article class="card">
+                <h2>Onboarding Status</h2>
+                <p>${escapeHtml(onboarding.summary)}</p>
+                <ul class="card-list">
+                  ${onboarding.checklistItems
+                    .filter((item) => item.state !== "complete")
+                    .slice(0, 3)
+                    .map(
+                      (item) => `<li>
+                        <strong>${escapeHtml(item.label)}</strong>
+                        <span class="pill pill-warn">${escapeHtml(item.state)}</span><br />
+                        <span class="small">${escapeHtml(item.detail)}</span>
+                        ${
+                          item.actionHref && item.actionLabel
+                            ? `<br /><a class="badge" href="${escapeHtml(item.actionHref)}">${escapeHtml(item.actionLabel)}</a>`
+                            : ""
+                        }
+                      </li>`,
+                    )
+                    .join("") || "<li>All onboarding checklist items are in a good state.</li>"}
+                </ul>
+                <div class="actions">
+                  <a class="badge" href="/setup/repositories/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}">Open Full Checklist</a>
+                  ${
+                    onboarding.latestContractIssueNumber
+                      ? `<a class="badge" href="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/contracts/${onboarding.latestContractIssueNumber}">Open Latest Contract</a>`
+                      : ""
+                  }
+                  ${
+                    onboarding.latestPullRequestNumber
+                      ? `<a class="badge" href="/dashboard/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.repo)}/packets/${onboarding.latestPullRequestNumber}">Open Latest Packet</a>`
+                      : ""
+                  }
+                </div>
+              </article>
+            </section>`
+          : ""
+      }
 
       <section class="grid-wide">
         <article class="card">

@@ -215,6 +215,29 @@ describe("dashboard console", () => {
     expect(response.text).toContain("Repository Console");
     expect(response.text).toContain("Save Repository Policy");
     expect(response.text).toContain("Sync Knowledge Now");
+    expect(response.text).toContain("Onboarding Status");
+    expect(response.text).toContain("Open Full Checklist");
+  });
+
+  it("exposes repository onboarding via the repository api", async () => {
+    const { store, app } = createHarness();
+    await store.upsertRepository({
+      owner: "acme",
+      repo: "patchpact-demo",
+      installationId: 1001,
+      config: defaultPatchPactConfig,
+    });
+
+    const repoResponse = await request(app).get("/api/repositories/acme/patchpact-demo");
+    const onboardingResponse = await request(app).get(
+      "/api/repositories/acme/patchpact-demo/onboarding",
+    );
+
+    expect(repoResponse.status).toBe(200);
+    expect(repoResponse.body.onboarding.repository.repo).toBe("patchpact-demo");
+    expect(onboardingResponse.status).toBe(200);
+    expect(onboardingResponse.body.repository.repo).toBe("patchpact-demo");
+    expect(onboardingResponse.body.checklistItems.length).toBeGreaterThan(0);
   });
 
   it("renders contract and packet detail pages", async () => {
